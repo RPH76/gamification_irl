@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>€RAPH</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Syne:wght@700;800&family=Noto+Sans+Math&display=swap">
+<style>
+/* Mise en page : en-tête titre ↔ porte-monnaie, puis deux colonnes d'actions sans séparateur, total en bas à droite. */
+:root {
+  --sand: rgb(202, 183, 135);
+  --sand-light: rgb(215, 199, 158);
+  --sand-deep: rgb(188, 167, 115);
+  --ink: rgb(127, 95, 55);
+  --ink-soft: rgba(127, 95, 55, 0.55);
+  --ink-faint: rgba(127, 95, 55, 0.22);
+  --veil: rgba(10, 7, 3, 0.82);
+  --white: #ffffff;
+  --gain: #3ad46f;
+  --loss: #ff4a3d;
+
+  --f-display: "Syne", "Arial Black", "Helvetica Neue", sans-serif;
+  --f-body: "Bricolage Grotesque", "Trebuchet MS", "Segoe UI", sans-serif;
+  --f-math: "Noto Sans Math", "Cambria Math", "STIX Two Math", "DejaVu Serif", serif;
+
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--sand); }
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+.r { font-family: var(--f-math); font-weight: 400; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 56px; }
+
+/* ---------- En-tête ---------- */
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.tabs { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 22px; min-width: 0; }
+.tab {
+  font-family: var(--f-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 1.05rem;
+  opacity: 0.55;
+  line-height: 1;
+}
+.tab:hover { opacity: 0.85; }
+.tab[aria-current="page"] {
+  font-size: clamp(1.7rem, 8vw, 3.6rem);
+  opacity: 1;
+  text-decoration: underline;
+  text-decoration-thickness: 0.085em;
+  text-underline-offset: 0.16em;
+}
+.tab:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 0.28em 0.85em 0.3em;
+  background: var(--sand-light);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.pill .r { font-size: 1.12em; }
+.wallet-pill { font-size: clamp(1.35rem, 3.6vw, 1.8rem); flex-shrink: 0; }
+.wallet-pill.bump { animation: bump 0.5s ease; }
+@keyframes bump { 40% { transform: scale(1.14); } }
+
+.date {
+  margin: 14px 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+/* ---------- Actions ---------- */
+.board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: clamp(28px, 7vw, 110px);
+  row-gap: 32px;
+  margin-top: 34px;
+}
+.col-head {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.action { padding-block: 10px; }
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  position: relative;
+}
+.row input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.box {
+  width: 34px; height: 34px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  transition: background 0.15s, transform 0.15s;
+}
+.box svg { width: 20px; height: 20px; opacity: 0; transform: scale(0.4); transition: opacity 0.15s, transform 0.2s; }
+.row:hover .box { background: var(--sand-light); }
+.row input:checked + .box { background: var(--ink); }
+.row input:checked + .box svg { opacity: 1; transform: scale(1); }
+.row input:focus-visible + .box { outline: 3px solid var(--ink); outline-offset: 3px; }
+.row input:disabled ~ * { cursor: default; }
+.row:has(input:disabled) { cursor: default; }
+.row:has(input:disabled):hover .box { background: transparent; }
+.row:has(input:disabled:checked):hover .box { background: var(--ink); }
+
+.label {
+  font-size: clamp(1.4rem, 2.7vw, 1.85rem);
+  font-weight: 650;
+  line-height: 1.12;
+  font-variation-settings: "opsz" 72;
+  overflow-wrap: anywhere;
+}
+.label small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  opacity: 0.75;
+  font-variation-settings: "opsz" 14;
+}
+.val {
+  font-size: 1.2rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.val .r { font-size: 1.05em; }
+
+.qty {
+  margin: 12px 0 4px 50px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 4px 12px;
+}
+.step {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 2.5px solid var(--ink);
+  background: transparent;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: grid; place-items: center;
+}
+.step:hover { background: var(--sand-light); }
+.step:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.step:disabled { opacity: 0.35; cursor: default; background: transparent; }
+.qty output {
+  font-size: 1.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 1.6ch;
+  text-align: center;
+}
+.qty .caption {
+  grid-column: 2 / 3;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 30px;
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--ink);
+}
+input[type="range"]::-webkit-slider-runnable-track { height: 8px; border-radius: 99px; background: var(--ink-faint); }
+input[type="range"]::-moz-range-track { height: 8px; border-radius: 99px; background: var(--ink-faint); }
+input[type="range"]::-moz-range-progress { height: 8px; border-radius: 99px; background: var(--ink); }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px; height: 26px; margin-top: -9px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid var(--sand);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid var(--sand);
+}
+input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
+
+.foot {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  padding-top: 12px;
+}
+.total { display: flex; align-items: baseline; gap: 14px; }
+.total-label { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; }
+.total-value {
+  font-family: var(--f-body);
+  font-size: clamp(2.6rem, 7vw, 3.8rem);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.2s;
+}
+.total-value .r { font-family: var(--f-math); font-weight: 400; font-size: 0.85em; }
+.total-value.idle { opacity: 0.35; }
+
+.btn {
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--sand);
+  font-weight: 750;
+  font-size: 1.2rem;
+  padding: 0.75em 1.5em;
+  cursor: pointer;
+  transition: transform 0.12s, opacity 0.15s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+.btn.ghost { background: transparent; color: var(--ink); border: 2.5px solid var(--ink); }
+
+.done-note { font-size: 1.15rem; font-weight: 650; }
+
+/* ---------- Shop ---------- */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 40px;
+}
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.item-img {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 100%;
+  border-radius: 20px;
+  background: var(--sand-light);
+  display: grid; place-items: center;
+  padding: 12%;
+  transition: transform 0.18s, background 0.18s;
+  position: relative;
+}
+.item:hover .item-img { transform: translateY(-3px); background: var(--sand-deep); }
+.item:focus-visible .item-img { outline: 3px solid var(--ink); outline-offset: 3px; }
+.item-img svg { width: 100%; height: 100%; }
+.item-name { font-size: 1.15rem; font-weight: 700; line-height: 1.15; }
+.item-name small { display: block; font-weight: 500; font-size: 0.92rem; opacity: 0.8; margin-top: 2px; }
+.item .pill { font-size: 1.15rem; }
+.owned {
+  position: absolute; top: 10px; right: 10px;
+  background: var(--ink); color: var(--sand);
+  font-size: 0.78rem; font-weight: 750;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 0.3em 0.7em; border-radius: 999px;
+}
+.slot {
+  aspect-ratio: 1;
+  border-radius: 20px;
+  border: 2.5px dashed var(--ink-faint);
+  display: grid; place-items: center;
+  font-size: 0.85rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-soft);
+}
+@media (max-width: 900px) { .shop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } }
+
+/* ---------- Mode test ---------- */
+.testbar {
+  margin-top: 64px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+.testbar:hover, .testbar:focus-within { opacity: 1; }
+.testbar strong { letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.75rem; }
+.link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; font-weight: 600;
+}
+.link:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- Boîte de dialogue ---------- */
+.modal {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(60, 42, 18, 0.45);
+  display: grid; place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.sheet {
+  background: var(--sand);
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  padding: 26px;
+  width: min(440px, 100%);
+  display: grid; gap: 18px;
+}
+.sheet h3 { margin: 0; font-family: var(--f-display); font-size: 1.6rem; line-height: 1.1; text-wrap: balance; }
+.sheet p { margin: 0; font-size: 1.1rem; }
+.sheet .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
+.sheet .btn { font-size: 1.05rem; }
+
+.toast {
+  position: fixed; left: 50%; z-index: 45;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  background: var(--ink); color: var(--sand);
+  padding: 0.8em 1.3em; border-radius: 999px;
+  font-weight: 700; font-size: 1.05rem;
+  max-width: calc(100% - 32px);
+  text-align: center;
+}
+
+/* ---------- Animation de validation ---------- */
+.fx {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--veil);
+  display: grid; place-items: center;
+  padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  cursor: pointer;
+}
+.fx.show { opacity: 1; }
+.fx-stage { display: grid; justify-items: center; gap: 8px; text-align: center; color: var(--white); }
+.fx-art { width: min(64vw, 300px); height: auto; overflow: visible; }
+.fx-amount {
+  margin: 8px 0 0;
+  font-family: var(--f-body);
+  font-weight: 800;
+  font-size: clamp(4rem, 16vw, 7.5rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.35s ease;
+}
+.fx-amount .r { font-family: var(--f-math); font-weight: 400; font-size: 0.8em; }
+.fx-sub { margin: 0; font-size: clamp(1.25rem, 4vw, 1.7rem); font-weight: 650; opacity: 0.9; }
+.fx-hint { margin: 18px 0 0; font-size: 0.95rem; opacity: 0.6; }
+
+.fx .stroke { fill: transparent; stroke: var(--white); stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; transition: stroke 0.35s ease, fill 0.35s ease; }
+.fx .dot { fill: var(--white); transition: fill 0.35s ease; }
+
+/* Portefeuille */
+.wallet-art { transform: scale(0.6); opacity: 0; transition: transform 0.45s cubic-bezier(.2,1.6,.4,1), opacity 0.3s; }
+.fx.show .wallet-art { transform: scale(1); opacity: 1; }
+.coin { opacity: 0; }
+.fx.gain .coin { animation: drop 0.6s cubic-bezier(.5,0,.8,.4) forwards; }
+.fx.gain .coin:nth-of-type(2) { animation-delay: 0.12s; }
+.fx.gain .coin:nth-of-type(3) { animation-delay: 0.24s; }
+@keyframes drop {
+  0% { opacity: 0; transform: translateY(-70px); }
+  25% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(18px); }
+}
+.fx.gain .stroke { stroke: var(--gain); fill: rgba(58, 212, 111, 0.2); }
+.fx.gain .dot { fill: var(--gain); }
+.fx.gain .fx-amount { color: var(--gain); }
+.fx.gain .wallet-art { animation: pulse 0.5s 0.55s ease; }
+@keyframes pulse { 50% { transform: scale(1.08); } }
+
+/* Tirelire */
+.pig-art { opacity: 0; transform: scale(0.7); transition: transform 0.4s cubic-bezier(.2,1.5,.4,1), opacity 0.3s; }
+.fx.show .pig-art { opacity: 1; transform: scale(1); }
+.fx.shake .pig-art { animation: shake 0.5s linear; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-7px) rotate(-3deg); }
+  40% { transform: translateX(7px) rotate(3deg); }
+  60% { transform: translateX(-5px) rotate(-2deg); }
+  80% { transform: translateX(5px) rotate(2deg); }
+}
+.crack { fill: none; stroke: var(--white); stroke-width: 4; stroke-linejoin: round; stroke-dasharray: 180; stroke-dashoffset: 180; transition: stroke-dashoffset 0.25s ease, stroke 0.35s, opacity 0.2s; }
+.fx.cracked .crack { stroke-dashoffset: 0; }
+.fx.broken .crack { opacity: 0; }
+.half { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 0.55s cubic-bezier(.3,1.4,.5,1); }
+.fx.broken .half-l { transform: translate(-30px, 12px) rotate(-16deg); }
+.fx.broken .half-r { transform: translate(30px, 12px) rotate(16deg); }
+.shard { opacity: 0; transform-box: fill-box; transform-origin: center; }
+.fx.broken .shard { animation: fly 0.8s ease-out forwards; }
+.fx.broken .s2 { animation-name: fly2; }
+.fx.broken .s3 { animation-name: fly3; }
+@keyframes fly  { 0% { opacity: 1; transform: translate(0,0) rotate(0); } 100% { opacity: 0; transform: translate(-60px,-70px) rotate(-200deg); } }
+@keyframes fly2 { 0% { opacity: 1; transform: translate(0,0) rotate(0); } 100% { opacity: 0; transform: translate(70px,-60px) rotate(220deg); } }
+@keyframes fly3 { 0% { opacity: 1; transform: translate(0,0) rotate(0); } 100% { opacity: 0; transform: translate(10px,-95px) rotate(160deg); } }
+.fx.loss .stroke, .fx.loss .crack { stroke: var(--loss); }
+.fx.loss .stroke { fill: rgba(255, 74, 61, 0.18); }
+.fx.loss .dot { fill: var(--loss); }
+.fx.loss .fx-amount { color: var(--loss); }
+
+@media (max-width: 760px) {
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .foot { justify-content: space-between; }
+}
+@media (max-width: 480px) {
+  .qty { margin-left: 0; }
+  .wallet-pill { font-size: 1.25rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <nav class="tabs" aria-label="Pages">
+      <a class="tab" id="tab-actions" href="#actions">Actions</a>
+      <a class="tab" id="tab-shop" href="#shop">Shop</a>
+    </nav>
+    <div class="pill wallet-pill" id="wallet" title="Porte-monnaie €RAPH" aria-live="polite">
+      <span id="wallet-amount">0</span><span class="r" aria-label="€RAPH">ℝ</span>
+    </div>
+  </header>
+  <p class="date" id="today"></p>
+
+  <!-- Page Actions -->
+  <main id="page-actions">
+    <div class="board">
+      <section aria-labelledby="h-pos">
+        <h2 class="col-head" id="h-pos">Positives</h2>
+        <div id="list-pos"></div>
+      </section>
+      <section aria-labelledby="h-neg">
+        <h2 class="col-head" id="h-neg">Négatives</h2>
+        <div id="list-neg"></div>
+      </section>
+      <div class="foot">
+        <div class="total">
+          <span class="total-label">Total</span>
+          <span class="total-value idle" id="total" aria-live="polite">0 <span class="r">ℝ</span></span>
+        </div>
+        <button class="btn" id="validate" type="button" disabled>Valider</button>
+        <p class="done-note" id="done-note" hidden></p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Page Shop -->
+  <main id="page-shop" hidden>
+    <div class="shop-grid" id="shop-grid"></div>
+  </main>
+
+  <footer class="testbar" aria-label="Mode test">
+    <strong>Mode test</strong>
+    <button class="link" type="button" id="t-reopen">Rouvrir la journée</button>
+    <button class="link" type="button" id="t-reset">Tout remettre à zéro</button>
+  </footer>
+</div>
+
+<!-- Boîte de dialogue (confirmations dans la page) -->
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h3 id="modal-title"></h3>
+    <p id="modal-text"></p>
+    <div class="actions">
+      <button class="btn ghost" type="button" id="modal-cancel">Annuler</button>
+      <button class="btn" type="button" id="modal-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<!-- Animation de validation -->
+<div class="fx" id="fx" hidden>
+  <div class="fx-stage">
+    <svg class="fx-art wallet-art" id="art-wallet" viewBox="0 0 220 180" aria-hidden="true">
+      <circle class="coin stroke" cx="80" cy="30" r="13"></circle>
+      <circle class="coin stroke" cx="110" cy="22" r="13"></circle>
+      <circle class="coin stroke" cx="140" cy="30" r="13"></circle>
+      <path class="stroke" d="M40 62 L150 30 L162 62"></path>
+      <rect class="stroke" x="28" y="62" width="164" height="104" rx="16"></rect>
+      <rect class="stroke" x="140" y="94" width="52" height="38" rx="10"></rect>
+      <circle class="dot" cx="160" cy="113" r="6"></circle>
+    </svg>
+
+    <svg class="fx-art pig-art" id="art-pig" viewBox="0 0 220 180" aria-hidden="true">
+      <defs>
+        <g id="pig">
+          <path class="stroke" d="M122 50 L134 24 L146 54"></path>
+          <ellipse class="stroke" cx="108" cy="98" rx="66" ry="52"></ellipse>
+          <path class="stroke" d="M44 92 c-16 -10 -24 8 -12 12 c8 3 6 -10 -2 -6"></path>
+          <rect class="stroke" x="168" y="80" width="22" height="34" rx="11"></rect>
+          <circle class="dot" cx="176" cy="92" r="2.6"></circle>
+          <circle class="dot" cx="176" cy="102" r="2.6"></circle>
+          <circle class="dot" cx="148" cy="80" r="4.5"></circle>
+          <rect class="stroke" x="94" y="52" width="30" height="6" rx="3"></rect>
+          <rect class="stroke" x="66" y="140" width="16" height="22" rx="5"></rect>
+          <rect class="stroke" x="130" y="140" width="16" height="22" rx="5"></rect>
+        </g>
+        <clipPath id="clip-l"><polygon points="0,0 110,0 100,40 116,68 98,96 114,124 102,180 0,180"></polygon></clipPath>
+        <clipPath id="clip-r"><polygon points="110,0 220,0 220,180 102,180 114,124 98,96 116,68 100,40"></polygon></clipPath>
+      </defs>
+      <g class="half half-l"><use href="#pig" clip-path="url(#clip-l)"></use></g>
+      <g class="half half-r"><use href="#pig" clip-path="url(#clip-r)"></use></g>
+      <polyline class="crack" points="108,44 100,40 116,68 98,96 114,124 104,150"></polyline>
+      <polygon class="shard stroke s1" points="96,70 106,64 102,78"></polygon>
+      <polygon class="shard stroke s2" points="114,96 124,92 118,106"></polygon>
+      <polygon class="shard stroke s3" points="104,48 112,44 110,56"></polygon>
+    </svg>
+
+    <p class="fx-amount" id="fx-amount"></p>
+    <p class="fx-sub" id="fx-sub"></p>
+    <p class="fx-hint">Touchez pour continuer</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Données ----------
+  // qty : la case ouvre une barre de quantité ; calc(n) renvoie la valeur totale de l'action.
+  var POSITIVES = [
+    { id: "vaisselle", label: "Vaisselle", r: 1 },
+    { id: "dodo", label: "Dodo avant 22h30", r: 2 },
+    { id: "no-masturbation", label: "∅ Masturbation", r: 6 },
+    { id: "no-junk", label: "∅ Junk Food", r: 3 },
+    { id: "menage", label: "Ménage", r: 3 },
+    { id: "minecraft", label: "Minecraft", note: "1h max / session · 3e session : 0, puis −2 par session", r: 1,
+      qty: { max: 8, caption: "nombre de sessions" }, calc: minecraftValue },
+    { id: "basic-fit", label: "Basic-Fit", r: 5 },
+    { id: "douche", label: "Douche chez moi", r: 2 },
+    { id: "no-ashr", label: "∅ ASHR", r: 2 },
+    { id: "video", label: "Vidéo publiée", r: 1 },
+    { id: "boxe", label: "Boxe Coach Ju'", r: 5 }
+  ];
+  var NEGATIVES = [
+    { id: "minecraft-over", label: "Minecraft > 1h non-stop", note: "2 ℝ par heure", r: -2,
+      qty: { max: 10, caption: "nombre d'heures" } },
+    { id: "masturbation", label: "Masturbation", note: "2 ℝ à chaque fois", r: -2,
+      qty: { max: 10, caption: "nombre de fois" } },
+    { id: "junk", label: "Junk Food", note: "2 ℝ à chaque fois", r: -2,
+      qty: { max: 10, caption: "nombre de fois" } },
+    { id: "vaisselle-pas-faite", label: "Vaisselle pas faite", note: "2 ℝ à chaque fois", r: -2,
+      qty: { max: 10, caption: "nombre de fois" } },
+    { id: "gaspillage", label: "Légumes, fruits, produits gaspillés", r: -3 },
+    { id: "dodo-tard", label: "Dodo > 22h30", r: -2 }
+  ];
+  var SHOP = [
+    { id: "venum-ice", name: "Gants de boxe VENUM", sub: "Bleu Ice", price: 32, art: glovesSvg }
+  ];
+  var SHOP_COLUMNS = 5;
+
+  // Sessions 1 et 2 : +1 chacune ; 3e : 0 ; à partir de la 4e : −2 chacune.
+  function minecraftValue(n) {
+    var v = 0;
+    for (var i = 1; i <= n; i++) v += i <= 2 ? 1 : i === 3 ? 0 : -2;
+    return v;
+  }
+  function actionValue(a, n) {
+    if (a.calc) return a.calc(n);
+    return a.qty ? a.r * n : a.r;
+  }
+
+  // ---------- État (stocké dans ce navigateur) ----------
+  var KEY = "eraph-v1";
+  function todayKey() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function freshDay() { return { date: todayKey(), checks: {}, qty: {}, validated: false, total: 0 }; }
+  function load() {
+    var s = null;
+    try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+    if (!s || typeof s !== "object") s = {};
+    if (typeof s.balance !== "number") s.balance = 0;
+    if (!Array.isArray(s.history)) s.history = [];
+    if (!Array.isArray(s.purchases)) s.purchases = [];
+    if (!s.day || s.day.date !== todayKey()) s.day = freshDay();
+    return s;
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var state = load();
+
+  // ---------- Utilitaires ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var MINUS = "−";
+  function signed(n) { return n > 0 ? "+" + n : n < 0 ? MINUS + Math.abs(n) : "0"; }
+  function plain(n) { return n < 0 ? MINUS + Math.abs(n) : String(n); }
+  function rHtml(text) { return text + ' <span class="r">ℝ</span>'; }
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sand)"/></svg>';
+
+  // ---------- Page Actions ----------
+  var rows = {};
+  function buildList(list, container) {
+    list.forEach(function (a) {
+      var wrap = el("div", "action");
+      var id = "a-" + a.id;
+      var label = el("label", "row");
+      label.setAttribute("for", id);
+      var input = el("input");
+      input.type = "checkbox";
+      input.id = id;
+      label.appendChild(input);
+      label.appendChild(el("span", "box", CHECK));
+      label.appendChild(el("span", "label", a.label + (a.note ? "<small>" + a.note + "</small>" : "")));
+      var val = el("span", "val");
+      label.appendChild(val);
+      wrap.appendChild(label);
+
+      var q = null;
+      if (a.qty) {
+        q = el("div", "qty");
+        q.hidden = true;
+        var minus = el("button", "step", MINUS);
+        minus.type = "button";
+        minus.setAttribute("aria-label", "Moins");
+        var range = el("input");
+        range.type = "range";
+        range.id = "q-" + a.id;
+        range.min = 1;
+        range.max = a.qty.max;
+        range.step = 1;
+        range.setAttribute("aria-label", a.qty.caption);
+        var plus = el("button", "step", "+");
+        plus.type = "button";
+        plus.setAttribute("aria-label", "Plus");
+        var out = el("output");
+        out.setAttribute("for", range.id);
+        q.appendChild(minus);
+        q.appendChild(range);
+        q.appendChild(plus);
+        q.appendChild(out);
+        q.appendChild(el("span", "caption", a.qty.caption));
+        wrap.appendChild(q);
+
+        range.addEventListener("input", function () { setQty(a, +range.value); });
+        minus.addEventListener("click", function () { setQty(a, (state.day.qty[a.id] || 1) - 1); });
+        plus.addEventListener("click", function () { setQty(a, (state.day.qty[a.id] || 1) + 1); });
+        rows[a.id] = { a: a, input: input, val: val, q: q, range: range, out: out, minus: minus, plus: plus };
+      } else {
+        rows[a.id] = { a: a, input: input, val: val };
+      }
+
+      input.addEventListener("change", function () {
+        state.day.checks[a.id] = input.checked;
+        if (input.checked && a.qty && !state.day.qty[a.id]) state.day.qty[a.id] = 1;
+        save();
+        renderActions();
+        if (input.checked && rows[a.id].range) rows[a.id].range.focus({ preventScroll: true });
+      });
+      container.appendChild(wrap);
+    });
+  }
+  function setQty(a, n) {
+    if (state.day.validated) return;
+    state.day.qty[a.id] = Math.max(1, Math.min(a.qty.max, n));
+    save();
+    renderActions();
+  }
+  function computeTotal() {
+    var t = 0;
+    Object.keys(rows).forEach(function (id) {
+      if (state.day.checks[id]) t += actionValue(rows[id].a, state.day.qty[id] || 1);
+    });
+    return t;
+  }
+  function anyChecked() {
+    return Object.keys(rows).some(function (id) { return state.day.checks[id]; });
+  }
+  function renderActions() {
+    var locked = state.day.validated;
+    Object.keys(rows).forEach(function (id) {
+      var row = rows[id], a = row.a, on = !!state.day.checks[id];
+      row.input.checked = on;
+      row.input.disabled = locked;
+      if (a.qty) {
+        var n = state.day.qty[id] || 1;
+        row.q.hidden = !on;
+        row.range.value = n;
+        row.range.disabled = locked;
+        row.out.textContent = n;
+        row.minus.disabled = locked || n <= 1;
+        row.plus.disabled = locked || n >= a.qty.max;
+        row.val.innerHTML = rHtml(signed(on ? actionValue(a, n) : actionValue(a, 1)));
+      } else {
+        row.val.innerHTML = rHtml(signed(a.r));
+      }
+    });
+    var total = locked ? state.day.total : computeTotal();
+    var tv = $("total");
+    tv.innerHTML = rHtml(signed(total));
+    tv.classList.toggle("idle", !locked && !anyChecked());
+    $("validate").hidden = locked;
+    $("validate").disabled = !anyChecked();
+    var note = $("done-note");
+    note.hidden = !locked;
+    if (locked) note.textContent = "Journée validée. Rendez-vous demain !";
+  }
+
+  function validate() {
+    if (state.day.validated || !anyChecked()) return;
+    var total = computeTotal();
+    state.day.validated = true;
+    state.day.total = total;
+    state.balance += total;
+    state.history.push({ date: state.day.date, total: total, checks: state.day.checks, qty: state.day.qty });
+    save();
+    renderActions();
+    playFx(total);
+  }
+
+  // ---------- Animation ----------
+  var fxTimers = [];
+  function later(fn, ms) { fxTimers.push(setTimeout(fn, ms)); }
+  function playFx(total) {
+    var fx = $("fx");
+    fxTimers.forEach(clearTimeout);
+    fxTimers = [];
+    fx.className = "fx";
+    var loss = total < 0;
+    // Éléments SVG : la propriété .hidden n'existe pas, on passe par l'attribut.
+    $("art-wallet").toggleAttribute("hidden", loss);
+    $("art-pig").toggleAttribute("hidden", !loss);
+    $("fx-amount").innerHTML = rHtml(signed(total));
+    $("fx-sub").textContent = total > 0 ? "ajoutés au porte-monnaie" : loss ? "retirés du porte-monnaie" : "Journée neutre";
+    fx.hidden = false;
+    void fx.offsetWidth;
+    fx.classList.add("show");
+    if (total > 0) {
+      later(function () { fx.classList.add("gain"); }, 250);
+    } else if (loss) {
+      later(function () { fx.classList.add("shake"); }, 380);
+      later(function () { fx.classList.add("cracked"); }, 720);
+      later(function () { fx.classList.add("broken", "loss"); }, 960);
+    }
+  }
+  function closeFx() {
+    var fx = $("fx");
+    if (fx.hidden) return;
+    fx.classList.remove("show");
+    later(function () {
+      fx.hidden = true;
+      renderWallet(true);
+    }, 300);
+  }
+
+  // ---------- Porte-monnaie ----------
+  function renderWallet(bump) {
+    $("wallet-amount").textContent = plain(state.balance);
+    if (bump) {
+      var w = $("wallet");
+      w.classList.remove("bump");
+      void w.offsetWidth;
+      w.classList.add("bump");
+    }
+  }
+
+  // ---------- Shop ----------
+  function glovesSvg() {
+    return '<svg viewBox="0 0 200 200" aria-hidden="true">' +
+      '<defs><g id="glove">' +
+      '<rect x="38" y="122" width="64" height="44" rx="10" fill="#7fb8d6"/>' +
+      '<rect x="38" y="132" width="64" height="7" fill="#ffffff"/>' +
+      '<path d="M36 126 C22 92 22 44 56 28 C86 14 118 30 118 66 C118 96 110 116 104 126 Z" fill="#c4e6f5"/>' +
+      '<path d="M36 92 C18 86 16 112 34 118 C44 121 52 114 50 106 Z" fill="#a6d4ea"/>' +
+      '<path d="M54 44 C62 34 80 30 92 36" stroke="#ffffff" stroke-width="7" stroke-linecap="round" fill="none" opacity=".7"/>' +
+      '<path d="M48 70 C64 66 94 66 112 72" stroke="#8cc3dd" stroke-width="3" fill="none"/>' +
+      '</g></defs>' +
+      '<use href="#glove" transform="translate(190 14) scale(-1 1) rotate(-8 70 100)"/>' +
+      '<g transform="translate(10 6) rotate(-8 70 100)"><use href="#glove"/>' +
+      '<text x="70" y="157" text-anchor="middle" font-family="Syne, Arial Black, sans-serif" font-weight="800" font-size="12" fill="#1f3f5c">VENUM</text></g>' +
+      '</svg>';
+  }
+  function ownedCount(id) {
+    return state.purchases.filter(function (p) { return p.id === id; }).length;
+  }
+  function buildShop() {
+    var grid = $("shop-grid");
+    grid.innerHTML = "";
+    SHOP.forEach(function (it) {
+      var b = el("button", "item");
+      b.type = "button";
+      b.id = "shop-" + it.id;
+      var img = el("span", "item-img", it.art());
+      var n = ownedCount(it.id);
+      if (n) img.appendChild(el("span", "owned", n > 1 ? "Acheté ×" + n : "Acheté"));
+      b.appendChild(img);
+      b.appendChild(el("span", "item-name", it.name + "<small>" + it.sub + "</small>"));
+      b.appendChild(el("span", "pill", it.price + ' <span class="r">ℝ</span>'));
+      b.addEventListener("click", function () { askBuy(it); });
+      grid.appendChild(b);
+    });
+    var empty = (SHOP_COLUMNS - (SHOP.length % SHOP_COLUMNS)) % SHOP_COLUMNS;
+    for (var i = 0; i < empty; i++) grid.appendChild(el("div", "slot", "Bientôt"));
+  }
+  function askBuy(it) {
+    var missing = it.price - state.balance;
+    if (missing > 0) {
+      openModal(it.name + " · " + it.sub,
+        "Prix : " + it.price + " ℝ. Il te manque " + missing + " ℝ.", null);
+      return;
+    }
+    openModal("Acheter " + it.name + " " + it.sub + " ?",
+      "Prix : " + it.price + " ℝ. Solde après achat : " + plain(state.balance - it.price) + " ℝ.",
+      { label: "Acheter", run: function () {
+        state.balance -= it.price;
+        state.purchases.push({ id: it.id, date: todayKey(), price: it.price });
+        save();
+        renderWallet(true);
+        buildShop();
+        toast("Acheté : " + it.name + " " + it.sub + " !");
+      } });
+  }
+
+  // ---------- Dialogue & notification ----------
+  var modalAction = null;
+  function openModal(title, text, action) {
+    modalAction = action;
+    $("modal-title").textContent = title;
+    $("modal-text").textContent = text;
+    $("modal-ok").hidden = !action;
+    $("modal-cancel").textContent = action ? "Annuler" : "Fermer";
+    if (action) $("modal-ok").textContent = action.label;
+    $("modal").hidden = false;
+    (action ? $("modal-ok") : $("modal-cancel")).focus();
+  }
+  function closeModal() { $("modal").hidden = true; modalAction = null; }
+  var toastTimer;
+  function toast(msg) {
+    var t = $("toast");
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 2800);
+  }
+
+  // ---------- Navigation ----------
+  function route() {
+    var shop = location.hash === "#shop";
+    $("page-actions").hidden = shop;
+    $("page-shop").hidden = !shop;
+    $(shop ? "tab-shop" : "tab-actions").setAttribute("aria-current", "page");
+    $(shop ? "tab-actions" : "tab-shop").removeAttribute("aria-current");
+    // Le titre de la page active passe en premier, comme sur la maquette.
+    var nav = document.querySelector(".tabs");
+    nav.insertBefore(shop ? $("tab-shop") : $("tab-actions"), nav.firstChild);
+  }
+
+  function renderDate() {
+    var d = new Date();
+    var txt = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    $("today").textContent = txt;
+  }
+
+  // Nouvelle journée à minuit : on remet les cases à zéro, le porte-monnaie reste.
+  function checkNewDay() {
+    if (state.day.date !== todayKey()) {
+      state.day = freshDay();
+      save();
+      renderDate();
+      renderActions();
+    }
+  }
+
+  // ---------- Démarrage ----------
+  buildList(POSITIVES, $("list-pos"));
+  buildList(NEGATIVES, $("list-neg"));
+  buildShop();
+  renderDate();
+  renderActions();
+  renderWallet(false);
+  route();
+
+  window.addEventListener("hashchange", route);
+  $("validate").addEventListener("click", validate);
+  $("fx").addEventListener("click", closeFx);
+  $("modal-cancel").addEventListener("click", closeModal);
+  $("modal-ok").addEventListener("click", function () {
+    var a = modalAction;
+    closeModal();
+    if (a) a.run();
+  });
+  $("modal").addEventListener("click", function (e) { if (e.target === $("modal")) closeModal(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { closeModal(); closeFx(); }
+    if ((e.key === "Enter" || e.key === " ") && !$("fx").hidden) { e.preventDefault(); closeFx(); }
+  });
+  setInterval(checkNewDay, 30000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) checkNewDay(); });
+
+  // Mode test
+  $("t-reopen").addEventListener("click", function () {
+    openModal("Rouvrir la journée ?",
+      "Le total de la journée (" + signed(state.day.validated ? state.day.total : 0) + " ℝ) est retiré du porte-monnaie et les cases redeviennent modifiables.",
+      { label: "Rouvrir", run: function () {
+        if (state.day.validated) {
+          state.balance -= state.day.total;
+          state.history.pop();
+        }
+        state.day.validated = false;
+        state.day.total = 0;
+        save();
+        renderWallet(true);
+        renderActions();
+        toast("Journée rouverte.");
+      } });
+  });
+  $("t-reset").addEventListener("click", function () {
+    openModal("Tout remettre à zéro ?",
+      "Porte-monnaie à 0 ℝ, cases du jour décochées, achats et historique effacés.",
+      { label: "Remettre à zéro", run: function () {
+        state = { balance: 0, history: [], purchases: [], day: freshDay() };
+        save();
+        renderWallet(true);
+        renderActions();
+        buildShop();
+        toast("Tout est remis à zéro.");
+      } });
+  });
+})();
+</script>
+</body>
+</html>
