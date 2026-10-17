@@ -1,0 +1,25 @@
+{
+  "name": "gamification_irl",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node --env-file=.env.local --experimental-strip-types index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RPH76/gamification_irl.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RPH76/gamification_irl/issues"
+  },
+  "homepage": "https://github.com/RPH76/gamification_irl#readme",
+  "type": "module",
+  "dependencies": {
+    "ai": "^7.0.143"
+  }
+}
