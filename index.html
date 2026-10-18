@@ -575,7 +575,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     { id: "no-masturbation", label: "∅ Masturbation", r: 6 },
     { id: "no-junk", label: "∅ Junk Food", r: 3 },
     { id: "menage", label: "Ménage", r: 3 },
-    { id: "minecraft", label: "Minecraft", note: "1h max / session · 3e session : 0, puis −2 par session", r: 1,
+    { id: "minecraft", label: "Minecraft", note: "1h max / session · 2e session : 0, puis −2 par session", r: 1,
       qty: { max: 8, caption: "nombre de sessions" }, calc: minecraftValue },
     { id: "basic-fit", label: "Basic-Fit", r: 5 },
     { id: "douche", label: "Douche chez moi", r: 2 },
@@ -600,10 +600,10 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   ];
   var SHOP_COLUMNS = 5;
 
-  // Sessions 1 et 2 : +1 chacune ; 3e : 0 ; à partir de la 4e : −2 chacune.
+  // 1re session : +1 ; 2e : 0 ; à partir de la 3e : −2 chacune.
   function minecraftValue(n) {
     var v = 0;
-    for (var i = 1; i <= n; i++) v += i <= 2 ? 1 : i === 3 ? 0 : -2;
+    for (var i = 1; i <= n; i++) v += i === 1 ? 1 : i === 2 ? 0 : -2;
     return v;
   }
   function actionValue(a, n) {
