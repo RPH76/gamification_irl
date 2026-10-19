@@ -49,7 +49,7 @@ button { font: inherit; color: inherit; }
 
 /* ---------- En-tête ---------- */
 .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.tabs { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 22px; min-width: 0; }
+.tabs { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px 22px; min-width: 0; }
 .tab {
   font-family: var(--f-display);
   font-weight: 800;
@@ -63,7 +63,10 @@ button { font: inherit; color: inherit; }
 }
 .tab:hover { opacity: 0.85; }
 .tab[aria-current="page"] {
-  font-size: clamp(1.7rem, 8vw, 3.6rem);
+  /* Le titre actif occupe sa ligne ; les autres onglets passent en dessous. */
+  flex-basis: 100%;
+  font-size: clamp(0.9rem, calc((100vw - 120px) / 12.5), 3.6rem);
+  overflow-wrap: anywhere;
   opacity: 1;
   text-decoration: underline;
   text-decoration-thickness: 0.085em;
@@ -270,57 +273,140 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 .done-note { font-size: 1.15rem; font-weight: 650; }
 
 /* ---------- Shop ---------- */
-.shop-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 22px;
-  margin-top: 40px;
-}
+.shop-list { display: grid; gap: 14px; margin-top: 34px; max-width: 820px; }
 .item {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  text-align: center;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-}
-.item-img {
+  gap: 20px;
   width: 100%;
-  aspect-ratio: 1;
-  max-width: 100%;
+  text-align: left;
+  border: 0;
   border-radius: 20px;
   background: var(--sand-light);
-  display: grid; place-items: center;
-  padding: 12%;
-  transition: transform 0.18s, background 0.18s;
-  position: relative;
+  padding: 12px 22px 12px 12px;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.18s;
 }
-.item:hover .item-img { transform: translateY(-3px); background: var(--sand-deep); }
-.item:focus-visible .item-img { outline: 3px solid var(--ink); outline-offset: 3px; }
+.item:hover { background: var(--sand-deep); transform: translateY(-2px); }
+.item:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.item-img { width: 96px; max-width: 100%; aspect-ratio: 1; display: grid; place-items: center; }
 .item-img svg { width: 100%; height: 100%; }
-.item-name { font-size: 1.15rem; font-weight: 700; line-height: 1.15; }
-.item-name small { display: block; font-weight: 500; font-size: 0.92rem; opacity: 0.8; margin-top: 2px; }
-.item .pill { font-size: 1.15rem; }
+.item-text { min-width: 0; }
+.item-name { display: block; font-size: clamp(1.3rem, 2.6vw, 1.65rem); font-weight: 700; line-height: 1.15; }
+.item-name small { display: block; font-weight: 500; font-size: 0.95rem; opacity: 0.8; margin-top: 3px; }
 .owned {
-  position: absolute; top: 10px; right: 10px;
+  display: inline-block;
+  margin-top: 8px;
   background: var(--ink); color: var(--sand);
-  font-size: 0.78rem; font-weight: 750;
+  font-size: 0.75rem; font-weight: 750;
   letter-spacing: 0.06em; text-transform: uppercase;
   padding: 0.3em 0.7em; border-radius: 999px;
 }
-.slot {
-  aspect-ratio: 1;
-  border-radius: 20px;
-  border: 2.5px dashed var(--ink-faint);
-  display: grid; place-items: center;
-  font-size: 0.85rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--ink-soft);
+.item .pill { font-size: 1.25rem; }
+@media (max-width: 480px) {
+  .item { grid-template-columns: 64px minmax(0, 1fr); gap: 10px 14px; padding-right: 14px; }
+  .item-img { width: 64px; }
+  .item .pill { grid-column: 2; justify-self: start; }
 }
-@media (max-width: 900px) { .shop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } }
+
+/* ---------- Calendrier ---------- */
+.cal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px 28px;
+  margin-top: 30px;
+}
+.cal-year { display: flex; align-items: center; gap: 14px; }
+.cal-year strong {
+  font-family: var(--f-display);
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 0.95rem; font-weight: 600; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend .dot, .legend .dash { --dot: 14px; }
+.cal-count { margin: 14px 0 0; font-size: 1.1rem; font-weight: 650; }
+.cal-wrap { margin-top: 22px; overflow-x: auto; padding-block: 4px; }
+.cal {
+  --dot: clamp(10px, 1.55vw, 18px);
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  row-gap: 12px;
+}
+.cal.desk { grid-template-columns: 4.4em repeat(31, minmax(0, 1fr)); }
+.cal.phone { --dot: 15px; grid-template-columns: 2.4em repeat(12, minmax(0, 1fr)); row-gap: 9px; }
+.cal .lbl {
+  justify-self: start;
+  font-size: 0.8rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  opacity: 0.8;
+}
+.cal .num { font-size: 0.72rem; font-weight: 650; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.dot {
+  display: block;
+  width: var(--dot); height: var(--dot);
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+}
+.dot.full { background: var(--ink); }
+.dot.future { opacity: 0.35; }
+.dot.today { box-shadow: 0 0 0 3px var(--sand), 0 0 0 5px var(--ink); }
+.dash { display: block; width: var(--dot); height: 2px; background: var(--ink); opacity: 0.6; }
+
+/* ---------- Banque ---------- */
+.bank { display: grid; gap: 34px; margin-top: 30px; max-width: 760px; }
+.bank-name {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: clamp(1.6rem, 4.6vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+.bank-motto { margin: 8px 0 0; font-size: clamp(1.1rem, 2.6vw, 1.4rem); font-style: italic; font-weight: 600; opacity: 0.85; }
+.bank-label { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; }
+.bank-balance {
+  margin: 4px 0 0;
+  font-size: clamp(4rem, 15vw, 8rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.bank-balance .r { font-family: var(--f-math); font-weight: 400; font-size: 0.68em; }
+.round-btn {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 750;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+.round-btn:disabled { opacity: 0.4; cursor: default; }
+.round-btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
+.round-hint { margin: 6px 0 0; font-size: 1.02rem; opacity: 0.8; }
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 1.08rem; font-weight: 550; }
+.rules li::before { content: "·"; font-weight: 800; margin-right: 10px; }
+.ledger h3 { margin: 0 0 10px; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; }
+.ledger ol { margin: 0; padding: 0; list-style: none; display: grid; }
+.ledger li {
+  display: grid;
+  grid-template-columns: 4.2em minmax(0, 1fr) auto;
+  gap: 14px;
+  padding-block: 9px;
+  border-bottom: 1.5px solid var(--ink-faint);
+  font-size: 1.02rem;
+}
+.ledger li span:first-child { opacity: 0.7; font-variant-numeric: tabular-nums; }
+.ledger li span:last-child { font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ledger .empty { opacity: 0.7; }
 
 /* ---------- Mode test ---------- */
 .testbar {
@@ -464,6 +550,8 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     <nav class="tabs" aria-label="Pages">
       <a class="tab" id="tab-actions" href="#actions">Actions</a>
       <a class="tab" id="tab-shop" href="#shop">Shop</a>
+      <a class="tab" id="tab-calendrier" href="#calendrier">Calendrier</a>
+      <a class="tab" id="tab-banque" href="#banque">Banque</a>
     </nav>
     <div class="pill wallet-pill" id="wallet" title="Porte-monnaie €RAPH" aria-live="polite">
       <span id="wallet-amount">0</span><span class="r" aria-label="€RAPH">ℝ</span>
@@ -495,11 +583,56 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 
   <!-- Page Shop -->
   <main id="page-shop" hidden>
-    <div class="shop-grid" id="shop-grid"></div>
+    <div class="shop-list" id="shop-list"></div>
+  </main>
+
+  <!-- Page Calendrier -->
+  <main id="page-calendrier" hidden>
+    <div class="cal-head">
+      <div class="cal-year">
+        <button class="step" type="button" id="cal-prev" aria-label="Année précédente">‹</button>
+        <strong id="cal-year"></strong>
+        <button class="step" type="button" id="cal-next" aria-label="Année suivante">›</button>
+      </div>
+      <div class="legend">
+        <span><i class="dot full"></i>Validé</span>
+        <span><i class="dot"></i>Pas validé</span>
+        <span><i class="dash"></i>Jour inexistant</span>
+      </div>
+    </div>
+    <p class="cal-count" id="cal-count"></p>
+    <div class="cal-wrap"><div class="cal" id="cal"></div></div>
+  </main>
+
+  <!-- Page Banque -->
+  <main id="page-banque" hidden>
+    <div class="bank">
+      <div>
+        <h2 class="bank-name">Banque Sabatier</h2>
+        <p class="bank-motto">« Kénanafout, mets tes patates d'dans ! »</p>
+      </div>
+      <div>
+        <span class="bank-label">Solde bancaire</span>
+        <p class="bank-balance" id="bank-balance">0,00 <span class="r">ℝ</span></p>
+        <button class="round-btn" type="button" id="round">arrondir ?</button>
+        <p class="round-hint" id="round-hint"></p>
+      </div>
+      <ul class="rules">
+        <li>Intérêts : 1 % par jour, arrondis au dixième supérieur.</li>
+        <li>Dès 20 ℝ, 20 ℝ partent au porte-monnaie ; les arrondis restent ici.</li>
+        <li>Une journée négative est d'abord prélevée ici, le reste sur le porte-monnaie.</li>
+      </ul>
+      <section class="ledger" aria-labelledby="h-ledger">
+        <h3 id="h-ledger">Relevé</h3>
+        <ol id="ledger"></ol>
+      </section>
+    </div>
   </main>
 
   <footer class="testbar" aria-label="Mode test">
     <strong>Mode test</strong>
+    <button class="link" type="button" id="t-next">Passer au jour suivant</button>
+    <button class="link" type="button" id="t-today">Revenir à aujourd'hui</button>
     <button class="link" type="button" id="t-reopen">Rouvrir la journée</button>
     <button class="link" type="button" id="t-reset">Tout remettre à zéro</button>
   </footer>
@@ -567,16 +700,19 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 (function () {
   "use strict";
 
+  // Tous les montants sont stockés en dixièmes de ℝ (entiers) : 12,40 ℝ = 124.
+  // Tout calcul qui tombe entre deux dixièmes est arrondi au dixième supérieur.
+
   // ---------- Données ----------
-  // qty : la case ouvre une barre de quantité ; calc(n) renvoie la valeur totale de l'action.
+  // r : valeur en ℝ ; qty : la case ouvre une barre de quantité ; value(n, ctx) : valeur dynamique en dixièmes.
   var POSITIVES = [
     { id: "vaisselle", label: "Vaisselle", r: 1 },
     { id: "dodo", label: "Dodo avant 22h30", r: 2 },
-    { id: "no-masturbation", label: "∅ Masturbation", r: 6 },
+    { id: "no-masturbation", label: "∅ Masturbation", value: noMasturbationValue, note: noMasturbationNote },
     { id: "no-junk", label: "∅ Junk Food", r: 3 },
     { id: "menage", label: "Ménage", r: 3 },
-    { id: "minecraft", label: "Minecraft", note: "1h max / session · 2e session : 0, puis −2 par session", r: 1,
-      qty: { max: 8, caption: "nombre de sessions" }, calc: minecraftValue },
+    { id: "minecraft", label: "Minecraft", value: minecraftValue, note: minecraftNote,
+      qty: { max: 2, caption: "nombre de sessions" } },
     { id: "basic-fit", label: "Basic-Fit", r: 5 },
     { id: "douche", label: "Douche chez moi", r: 2 },
     { id: "no-ashr", label: "∅ ASHR", r: 2 },
@@ -595,48 +731,117 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     { id: "gaspillage", label: "Légumes, fruits, produits gaspillés", r: -3 },
     { id: "dodo-tard", label: "Dodo > 22h30", r: -2 }
   ];
+  // Prix en dixièmes. La liste est toujours affichée par prix croissant.
   var SHOP = [
-    { id: "venum-ice", name: "Gants de boxe VENUM", sub: "Bleu Ice", price: 32, art: glovesSvg }
+    { id: "venum-ice", name: "Gants de boxe VENUM", sub: "Bleu Ice", price: 320, art: glovesSvg }
   ];
-  var SHOP_COLUMNS = 5;
 
-  // 1re session : +1 ; 2e : 0 ; à partir de la 3e : −2 chacune.
-  function minecraftValue(n) {
-    var v = 0;
-    for (var i = 1; i <= n; i++) v += i === 1 ? 1 : i === 2 ? 0 : -2;
-    return v;
+  var MINECRAFT_DAYS = 30;          // la valeur d'une session tombe à 0 après 30 jours d'affilée
+  var NO_MAST_STEPS = [60, 75, 90]; // 6 ; 7,5 ; 9 ℝ (maximum)
+  var BANK_THRESHOLD = 200;         // 20 ℝ
+  var MONTHS = ["Janv.", "Févr.", "Mars", "Avr.", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc."];
+  var MONTH_LETTERS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+  // ---------- Dates ----------
+  function keyOf(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
-  function actionValue(a, n) {
-    if (a.calc) return a.calc(n);
-    return a.qty ? a.r * n : a.r;
+  function dateOf(key) {
+    var p = key.split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2], 12);
   }
+  function addDays(key, n) {
+    var d = dateOf(key);
+    d.setDate(d.getDate() + n);
+    return keyOf(d);
+  }
+  function todayKey() { return addDays(keyOf(new Date()), state ? state.offset || 0 : 0); }
+  function shortDate(key) { var p = key.split("-"); return p[2] + "/" + p[1]; }
 
   // ---------- État (stocké dans ce navigateur) ----------
   var KEY = "eraph-v1";
-  function todayKey() {
-    var d = new Date();
-    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  }
+  var state = null;
   function freshDay() { return { date: todayKey(), checks: {}, qty: {}, validated: false, total: 0 }; }
+  function freshState() {
+    return { v: 2, offset: 0, balance: 0, days: {}, purchases: [], bank: { balance: 0, last: keyOf(new Date()), log: [] }, day: null };
+  }
   function load() {
     var s = null;
     try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
-    if (!s || typeof s !== "object") s = {};
+    if (!s || typeof s !== "object") s = freshState();
+    if (!s.v) {
+      // Version 1 : montants entiers en ℝ, historique sous forme de liste.
+      s.balance = (s.balance || 0) * 10;
+      s.purchases = (s.purchases || []).map(function (p) { return { id: p.id, date: p.date, price: p.price * 10 }; });
+      s.days = {};
+      (s.history || []).forEach(function (h) {
+        s.days[h.date] = { total: h.total * 10, checks: h.checks || {}, qty: h.qty || {}, wallet: h.total * 10, bank: 0 };
+      });
+      if (s.day && s.day.validated) s.day.total *= 10;
+      delete s.history;
+      s.v = 2;
+    }
     if (typeof s.balance !== "number") s.balance = 0;
-    if (!Array.isArray(s.history)) s.history = [];
+    if (typeof s.offset !== "number") s.offset = 0;
+    if (!s.days || typeof s.days !== "object") s.days = {};
     if (!Array.isArray(s.purchases)) s.purchases = [];
-    if (!s.day || s.day.date !== todayKey()) s.day = freshDay();
+    if (!s.bank) s.bank = { balance: 0, last: keyOf(new Date()), log: [] };
+    if (!Array.isArray(s.bank.log)) s.bank.log = [];
     return s;
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
-  var state = load();
+  state = load();
+  if (!state.day || state.day.date !== todayKey()) state.day = freshDay();
 
-  // ---------- Utilitaires ----------
-  var $ = function (id) { return document.getElementById(id); };
+  // ---------- Montants ----------
   var MINUS = "−";
-  function signed(n) { return n > 0 ? "+" + n : n < 0 ? MINUS + Math.abs(n) : "0"; }
-  function plain(n) { return n < 0 ? MINUS + Math.abs(n) : String(n); }
+  function fmt(t) {
+    var a = Math.abs(t), s = String(Math.floor(a / 10));
+    if (a % 10) s += "," + (a % 10) + "0";
+    return (t < 0 ? MINUS : "") + s;
+  }
+  function fmt2(t) {
+    var a = Math.abs(t);
+    return (t < 0 ? MINUS : "") + Math.floor(a / 10) + "," + (a % 10) + "0";
+  }
+  function signed(t) { return (t > 0 ? "+" : "") + fmt(t); }
   function rHtml(text) { return text + ' <span class="r">ℝ</span>'; }
+
+  // ---------- Séries de jours consécutifs ----------
+  // Nombre de jours validés d'affilée, juste avant `key`, où l'action était cochée.
+  function streakBefore(id, key) {
+    var n = 0, k = addDays(key, -1);
+    while (state.days[k] && state.days[k].checks && state.days[k].checks[id]) { n++; k = addDays(k, -1); }
+    return n;
+  }
+  // Minecraft : 2 ℝ par session le 1er jour, puis baisse chaque jour d'utilisation consécutive, 0 au bout d'un mois.
+  function minecraftPerSession(day) {
+    if (day > MINECRAFT_DAYS) return 0;
+    return Math.ceil(20 * (MINECRAFT_DAYS + 1 - day) / MINECRAFT_DAYS - 1e-9);
+  }
+  function minecraftValue(n) {
+    return n * minecraftPerSession(streakBefore("minecraft", state.day.date) + 1);
+  }
+  function minecraftNote() {
+    var day = streakBefore("minecraft", state.day.date) + 1;
+    return "1h max / session · 2 sessions max · jour " + day + " d'affilée : " + fmt(minecraftPerSession(day)) + " ℝ / session";
+  }
+  function noMasturbationValue() {
+    var day = streakBefore("no-masturbation", state.day.date) + 1;
+    return NO_MAST_STEPS[Math.min(day, NO_MAST_STEPS.length) - 1];
+  }
+  function noMasturbationNote() {
+    var day = streakBefore("no-masturbation", state.day.date) + 1;
+    return "Jour " + day + " d'affilée · 6 → 7,50 → 9 ℝ max";
+  }
+  function actionValue(a, n) {
+    if (a.value) return a.value(n);
+    var t = Math.round(a.r * 10);
+    return a.qty ? t * n : t;
+  }
+
+  // ---------- Utilitaires DOM ----------
+  var $ = function (id) { return document.getElementById(id); };
   function el(tag, cls, html) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -658,14 +863,20 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       input.id = id;
       label.appendChild(input);
       label.appendChild(el("span", "box", CHECK));
-      label.appendChild(el("span", "label", a.label + (a.note ? "<small>" + a.note + "</small>" : "")));
+      var text = el("span", "label", a.label);
+      var note = null;
+      if (a.note) {
+        note = el("small");
+        text.appendChild(note);
+      }
+      label.appendChild(text);
       var val = el("span", "val");
       label.appendChild(val);
       wrap.appendChild(label);
 
-      var q = null;
+      var row = { a: a, input: input, val: val, note: note };
       if (a.qty) {
-        q = el("div", "qty");
+        var q = el("div", "qty");
         q.hidden = true;
         var minus = el("button", "step", MINUS);
         minus.type = "button";
@@ -690,23 +901,23 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
         wrap.appendChild(q);
 
         range.addEventListener("input", function () { setQty(a, +range.value); });
-        minus.addEventListener("click", function () { setQty(a, (state.day.qty[a.id] || 1) - 1); });
-        plus.addEventListener("click", function () { setQty(a, (state.day.qty[a.id] || 1) + 1); });
-        rows[a.id] = { a: a, input: input, val: val, q: q, range: range, out: out, minus: minus, plus: plus };
-      } else {
-        rows[a.id] = { a: a, input: input, val: val };
+        minus.addEventListener("click", function () { setQty(a, qtyOf(a) - 1); });
+        plus.addEventListener("click", function () { setQty(a, qtyOf(a) + 1); });
+        row.q = q; row.range = range; row.out = out; row.minus = minus; row.plus = plus;
       }
+      rows[a.id] = row;
 
       input.addEventListener("change", function () {
         state.day.checks[a.id] = input.checked;
         if (input.checked && a.qty && !state.day.qty[a.id]) state.day.qty[a.id] = 1;
         save();
         renderActions();
-        if (input.checked && rows[a.id].range) rows[a.id].range.focus({ preventScroll: true });
+        if (input.checked && row.range) row.range.focus({ preventScroll: true });
       });
       container.appendChild(wrap);
     });
   }
+  function qtyOf(a) { return Math.max(1, Math.min(a.qty.max, state.day.qty[a.id] || 1)); }
   function setQty(a, n) {
     if (state.day.validated) return;
     state.day.qty[a.id] = Math.max(1, Math.min(a.qty.max, n));
@@ -716,7 +927,8 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   function computeTotal() {
     var t = 0;
     Object.keys(rows).forEach(function (id) {
-      if (state.day.checks[id]) t += actionValue(rows[id].a, state.day.qty[id] || 1);
+      var a = rows[id].a;
+      if (state.day.checks[id]) t += actionValue(a, a.qty ? qtyOf(a) : 1);
     });
     return t;
   }
@@ -729,17 +941,18 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       var row = rows[id], a = row.a, on = !!state.day.checks[id];
       row.input.checked = on;
       row.input.disabled = locked;
+      if (row.note) row.note.textContent = typeof a.note === "function" ? a.note() : a.note;
       if (a.qty) {
-        var n = state.day.qty[id] || 1;
+        var n = qtyOf(a);
         row.q.hidden = !on;
         row.range.value = n;
         row.range.disabled = locked;
         row.out.textContent = n;
         row.minus.disabled = locked || n <= 1;
         row.plus.disabled = locked || n >= a.qty.max;
-        row.val.innerHTML = rHtml(signed(on ? actionValue(a, n) : actionValue(a, 1)));
+        row.val.innerHTML = rHtml(signed(actionValue(a, on ? n : 1)));
       } else {
-        row.val.innerHTML = rHtml(signed(a.r));
+        row.val.innerHTML = rHtml(signed(actionValue(a, 1)));
       }
     });
     var total = locked ? state.day.total : computeTotal();
@@ -756,19 +969,149 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   function validate() {
     if (state.day.validated || !anyChecked()) return;
     var total = computeTotal();
+    var fromBank = 0;
+    // Une journée négative est d'abord prélevée sur la banque, le reste sur le porte-monnaie.
+    if (total < 0) {
+      fromBank = Math.min(state.bank.balance, -total);
+      if (fromBank > 0) {
+        state.bank.balance -= fromBank;
+        bankLog("Journée négative du " + shortDate(state.day.date), -fromBank);
+      }
+    }
+    var walletDelta = total + fromBank;
+    state.balance += walletDelta;
     state.day.validated = true;
     state.day.total = total;
-    state.balance += total;
-    state.history.push({ date: state.day.date, total: total, checks: state.day.checks, qty: state.day.qty });
+    state.days[state.day.date] = {
+      total: total, checks: state.day.checks, qty: state.day.qty,
+      wallet: walletDelta, bank: -fromBank
+    };
     save();
-    renderActions();
-    playFx(total);
+    renderAll();
+    playFx(total, fromBank);
+  }
+
+  // ---------- Banque Sabatier ----------
+  function bankLog(label, amount) {
+    state.bank.log.unshift({ date: todayKey(), label: label, amount: amount });
+    if (state.bank.log.length > 60) state.bank.log.length = 60;
+  }
+  // Dès 20 ℝ, 20 ℝ partent au porte-monnaie ; le reste (les arrondis) reste à la banque.
+  function sweep() {
+    var moved = 0;
+    while (state.bank.balance >= BANK_THRESHOLD) {
+      state.bank.balance -= BANK_THRESHOLD;
+      state.balance += BANK_THRESHOLD;
+      moved += BANK_THRESHOLD;
+      bankLog("Versement au porte-monnaie", -BANK_THRESHOLD);
+    }
+    return moved;
+  }
+  // Intérêts : 1 % par jour, arrondis au dixième supérieur.
+  function applyInterest() {
+    var today = todayKey(), earned = 0, moved = 0, guard = 0;
+    while (state.bank.last < today && guard++ < 4000) {
+      state.bank.last = addDays(state.bank.last, 1);
+      if (state.bank.balance > 0) {
+        var next = Math.ceil(state.bank.balance * 101 / 100);
+        var gain = next - state.bank.balance;
+        state.bank.balance = next;
+        earned += gain;
+        state.bank.log.unshift({ date: state.bank.last, label: "Intérêts 1 %", amount: gain });
+      }
+      moved += sweep();
+    }
+    if (state.bank.log.length > 60) state.bank.log.length = 60;
+    return { earned: earned, moved: moved };
+  }
+  function walletFraction() {
+    return ((state.balance % 10) + 10) % 10;
+  }
+  function roundWallet() {
+    var frac = walletFraction();
+    if (!frac) return;
+    state.balance -= frac;
+    state.bank.balance += frac;
+    bankLog("Arrondi du porte-monnaie", frac);
+    var moved = sweep();
+    save();
+    renderAll();
+    renderWallet(true);
+    toast(fmt2(frac) + " ℝ envoyés à la banque" + (moved ? ", et " + fmt(moved) + " ℝ reversés au porte-monnaie !" : "."));
+  }
+  function renderBank() {
+    $("bank-balance").innerHTML = rHtml(fmt2(state.bank.balance));
+    var frac = walletFraction();
+    $("round").disabled = !frac;
+    $("round-hint").textContent = frac
+      ? "Envoie " + fmt2(frac) + " ℝ du porte-monnaie (" + fmt(state.balance) + " ℝ) à la banque."
+      : "Rien à arrondir : le porte-monnaie est à " + fmt(state.balance) + " ℝ tout rond.";
+    var ol = $("ledger");
+    ol.innerHTML = "";
+    if (!state.bank.log.length) {
+      ol.appendChild(el("li", "empty", "<span></span><span>Aucune opération pour l'instant.</span><span></span>"));
+    }
+    state.bank.log.slice(0, 12).forEach(function (op) {
+      var li = el("li");
+      li.appendChild(el("span", null, shortDate(op.date)));
+      li.appendChild(el("span", null, op.label));
+      li.appendChild(el("span", null, rHtml((op.amount > 0 ? "+" : "") + fmt2(op.amount))));
+      ol.appendChild(li);
+    });
+  }
+
+  // ---------- Calendrier ----------
+  var calYear = dateOf(todayKey()).getFullYear();
+  var phoneQuery = window.matchMedia("(max-width: 640px)");
+  function renderCalendar() {
+    var cal = $("cal"), phone = phoneQuery.matches, today = todayKey();
+    $("cal-year").textContent = calYear;
+    cal.className = "cal " + (phone ? "phone" : "desk");
+    cal.innerHTML = "";
+    var count = 0;
+
+    function place(node, row, col) {
+      node.style.gridRow = row;
+      node.style.gridColumn = col;
+      cal.appendChild(node);
+    }
+    // En-têtes : jours en colonnes et mois en lignes (ordinateur), l'inverse sur téléphone.
+    for (var d = 1; d <= 31; d++) {
+      var num = el("span", "num", String(d));
+      if (phone) place(num, d + 1, 1); else place(num, 1, d + 1);
+    }
+    for (var m = 0; m < 12; m++) {
+      var lbl = el("span", "lbl", phone ? MONTH_LETTERS[m] : MONTHS[m]);
+      lbl.title = MONTHS[m];
+      if (phone) { lbl.style.justifySelf = "center"; place(lbl, 1, m + 2); } else place(lbl, m + 2, 1);
+      var dim = new Date(calYear, m + 1, 0).getDate();
+      for (var day = 1; day <= 31; day++) {
+        var node;
+        if (day > dim) {
+          node = el("span", "dash");
+          node.setAttribute("aria-hidden", "true");
+        } else {
+          var key = calYear + "-" + String(m + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+          var rec = state.days[key];
+          node = el("span", "dot" + (rec ? " full" : "") + (key > today ? " future" : "") + (key === today ? " today" : ""));
+          var label = day + " " + MONTHS[m].replace(".", "") + " : " + (rec ? "validé (" + signed(rec.total) + " ℝ)" : "non validé");
+          node.title = label;
+          node.setAttribute("aria-label", label);
+          node.setAttribute("role", "img");
+          if (rec) count++;
+        }
+        if (phone) place(node, day + 1, m + 2); else place(node, m + 2, day + 1);
+      }
+    }
+    $("cal-count").textContent = count
+      ? count + (count > 1 ? " jours validés en " : " jour validé en ") + calYear + "."
+      : "Aucun jour validé en " + calYear + ".";
   }
 
   // ---------- Animation ----------
   var fxTimers = [];
   function later(fn, ms) { fxTimers.push(setTimeout(fn, ms)); }
-  function playFx(total) {
+  function playFx(total, fromBank) {
     var fx = $("fx");
     fxTimers.forEach(clearTimeout);
     fxTimers = [];
@@ -778,7 +1121,13 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     $("art-wallet").toggleAttribute("hidden", loss);
     $("art-pig").toggleAttribute("hidden", !loss);
     $("fx-amount").innerHTML = rHtml(signed(total));
-    $("fx-sub").textContent = total > 0 ? "ajoutés au porte-monnaie" : loss ? "retirés du porte-monnaie" : "Journée neutre";
+    var sub = total > 0 ? "ajoutés au porte-monnaie" : loss ? "retirés du porte-monnaie" : "Journée neutre";
+    if (loss && fromBank) {
+      sub = fromBank === -total
+        ? "pris à la Banque Sabatier"
+        : fmt2(fromBank) + " ℝ pris à la banque, " + fmt2(-total - fromBank) + " ℝ au porte-monnaie";
+    }
+    $("fx-sub").textContent = sub;
     fx.hidden = false;
     void fx.offsetWidth;
     fx.classList.add("show");
@@ -802,7 +1151,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 
   // ---------- Porte-monnaie ----------
   function renderWallet(bump) {
-    $("wallet-amount").textContent = plain(state.balance);
+    $("wallet-amount").textContent = fmt(state.balance);
     if (bump) {
       var w = $("wallet");
       w.classList.remove("bump");
@@ -831,39 +1180,38 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     return state.purchases.filter(function (p) { return p.id === id; }).length;
   }
   function buildShop() {
-    var grid = $("shop-grid");
-    grid.innerHTML = "";
-    SHOP.forEach(function (it) {
+    var list = $("shop-list");
+    list.innerHTML = "";
+    SHOP.slice().sort(function (a, b) { return a.price - b.price; }).forEach(function (it) {
       var b = el("button", "item");
       b.type = "button";
       b.id = "shop-" + it.id;
-      var img = el("span", "item-img", it.art());
+      b.appendChild(el("span", "item-img", it.art()));
+      var text = el("span", "item-text");
+      text.appendChild(el("span", "item-name", it.name + "<small>" + it.sub + "</small>"));
       var n = ownedCount(it.id);
-      if (n) img.appendChild(el("span", "owned", n > 1 ? "Acheté ×" + n : "Acheté"));
-      b.appendChild(img);
-      b.appendChild(el("span", "item-name", it.name + "<small>" + it.sub + "</small>"));
-      b.appendChild(el("span", "pill", it.price + ' <span class="r">ℝ</span>'));
+      if (n) text.appendChild(el("span", "owned", n > 1 ? "Acheté ×" + n : "Acheté"));
+      b.appendChild(text);
+      b.appendChild(el("span", "pill", rHtml(fmt(it.price))));
       b.addEventListener("click", function () { askBuy(it); });
-      grid.appendChild(b);
+      list.appendChild(b);
     });
-    var empty = (SHOP_COLUMNS - (SHOP.length % SHOP_COLUMNS)) % SHOP_COLUMNS;
-    for (var i = 0; i < empty; i++) grid.appendChild(el("div", "slot", "Bientôt"));
   }
   function askBuy(it) {
     var missing = it.price - state.balance;
     if (missing > 0) {
       openModal(it.name + " · " + it.sub,
-        "Prix : " + it.price + " ℝ. Il te manque " + missing + " ℝ.", null);
+        "Prix : " + fmt(it.price) + " ℝ. Il te manque " + fmt(missing) + " ℝ.", null);
       return;
     }
     openModal("Acheter " + it.name + " " + it.sub + " ?",
-      "Prix : " + it.price + " ℝ. Solde après achat : " + plain(state.balance - it.price) + " ℝ.",
+      "Prix : " + fmt(it.price) + " ℝ. Solde après achat : " + fmt(state.balance - it.price) + " ℝ.",
       { label: "Acheter", run: function () {
         state.balance -= it.price;
         state.purchases.push({ id: it.id, date: todayKey(), price: it.price });
         save();
         renderWallet(true);
-        buildShop();
+        renderAll();
         toast("Acheté : " + it.name + " " + it.sub + " !");
       } });
   }
@@ -887,48 +1235,75 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     t.textContent = msg;
     t.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.hidden = true; }, 2800);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 3200);
   }
 
   // ---------- Navigation ----------
+  var PAGES = ["actions", "shop", "calendrier", "banque"];
   function route() {
-    var shop = location.hash === "#shop";
-    $("page-actions").hidden = shop;
-    $("page-shop").hidden = !shop;
-    $(shop ? "tab-shop" : "tab-actions").setAttribute("aria-current", "page");
-    $(shop ? "tab-actions" : "tab-shop").removeAttribute("aria-current");
-    // Le titre de la page active passe en premier, comme sur la maquette.
+    var page = location.hash.slice(1);
+    if (PAGES.indexOf(page) < 0) page = "actions";
     var nav = document.querySelector(".tabs");
-    nav.insertBefore(shop ? $("tab-shop") : $("tab-actions"), nav.firstChild);
+    PAGES.forEach(function (p) {
+      $("page-" + p).hidden = p !== page;
+      var tab = $("tab-" + p);
+      if (p === page) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
+      nav.appendChild(tab);
+    });
+    // Le titre de la page active passe en premier, en grand et souligné.
+    nav.insertBefore($("tab-" + page), nav.firstChild);
+    if (page === "calendrier") renderCalendar();
   }
 
   function renderDate() {
-    var d = new Date();
-    var txt = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    var txt = dateOf(todayKey()).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    if (state.offset) txt += " · simulation +" + state.offset + " j";
     $("today").textContent = txt;
   }
+  function renderAll() {
+    renderDate();
+    renderActions();
+    renderWallet(false);
+    renderBank();
+    buildShop();
+    if (!$("page-calendrier").hidden) renderCalendar();
+  }
 
-  // Nouvelle journée à minuit : on remet les cases à zéro, le porte-monnaie reste.
-  function checkNewDay() {
+  // Nouvelle journée : intérêts de la banque, cases remises à zéro, le porte-monnaie reste.
+  function checkNewDay(silent) {
+    var r = applyInterest();
+    var changed = r.earned || r.moved;
     if (state.day.date !== todayKey()) {
       state.day = freshDay();
+      calYear = dateOf(todayKey()).getFullYear();
+      changed = true;
+    }
+    if (changed) {
       save();
-      renderDate();
-      renderActions();
+      renderAll();
+    }
+    if (!silent && r.moved) {
+      renderWallet(true);
+      toast("Banque Sabatier : " + fmt(r.moved) + " ℝ versés au porte-monnaie !");
+    } else if (!silent && r.earned) {
+      toast("Banque Sabatier : +" + fmt2(r.earned) + " ℝ d'intérêts.");
     }
   }
 
   // ---------- Démarrage ----------
   buildList(POSITIVES, $("list-pos"));
   buildList(NEGATIVES, $("list-neg"));
-  buildShop();
-  renderDate();
-  renderActions();
-  renderWallet(false);
+  checkNewDay(false);
+  save();
+  renderAll();
   route();
 
   window.addEventListener("hashchange", route);
+  phoneQuery.addEventListener("change", function () { if (!$("page-calendrier").hidden) renderCalendar(); });
   $("validate").addEventListener("click", validate);
+  $("round").addEventListener("click", roundWallet);
+  $("cal-prev").addEventListener("click", function () { calYear--; renderCalendar(); });
+  $("cal-next").addEventListener("click", function () { calYear++; renderCalendar(); });
   $("fx").addEventListener("click", closeFx);
   $("modal-cancel").addEventListener("click", closeModal);
   $("modal-ok").addEventListener("click", function () {
@@ -941,35 +1316,62 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     if (e.key === "Escape") { closeModal(); closeFx(); }
     if ((e.key === "Enter" || e.key === " ") && !$("fx").hidden) { e.preventDefault(); closeFx(); }
   });
-  setInterval(checkNewDay, 30000);
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) checkNewDay(); });
+  setInterval(function () { checkNewDay(false); }, 30000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) checkNewDay(false); });
 
-  // Mode test
+  // ---------- Mode test ----------
+  $("t-next").addEventListener("click", function () {
+    state.offset = (state.offset || 0) + 1;
+    checkNewDay(false);
+    save();
+    renderAll();
+  });
+  $("t-today").addEventListener("click", function () {
+    state.offset = 0;
+    if (state.bank.last > todayKey()) state.bank.last = todayKey();
+    state.day = freshDay();
+    if (state.days[state.day.date]) {
+      var rec = state.days[state.day.date];
+      state.day.checks = rec.checks;
+      state.day.qty = rec.qty;
+      state.day.validated = true;
+      state.day.total = rec.total;
+    }
+    calYear = dateOf(todayKey()).getFullYear();
+    save();
+    renderAll();
+    toast("Retour à la vraie date.");
+  });
   $("t-reopen").addEventListener("click", function () {
+    var rec = state.days[state.day.date];
     openModal("Rouvrir la journée ?",
-      "Le total de la journée (" + signed(state.day.validated ? state.day.total : 0) + " ℝ) est retiré du porte-monnaie et les cases redeviennent modifiables.",
-      { label: "Rouvrir", run: function () {
-        if (state.day.validated) {
-          state.balance -= state.day.total;
-          state.history.pop();
+      rec ? "Le total de la journée (" + signed(rec.total) + " ℝ) est annulé, sur le porte-monnaie comme à la banque, et les cases redeviennent modifiables."
+          : "La journée n'est pas encore validée.",
+      rec ? { label: "Rouvrir", run: function () {
+        state.balance -= rec.wallet;
+        if (rec.bank) {
+          state.bank.balance -= rec.bank;
+          bankLog("Annulation (test)", -rec.bank);
         }
+        delete state.days[state.day.date];
         state.day.validated = false;
         state.day.total = 0;
         save();
         renderWallet(true);
-        renderActions();
+        renderAll();
         toast("Journée rouverte.");
-      } });
+      } } : null);
   });
   $("t-reset").addEventListener("click", function () {
     openModal("Tout remettre à zéro ?",
-      "Porte-monnaie à 0 ℝ, cases du jour décochées, achats et historique effacés.",
+      "Porte-monnaie et banque à 0 ℝ, calendrier, achats et historique effacés, retour à la vraie date.",
       { label: "Remettre à zéro", run: function () {
-        state = { balance: 0, history: [], purchases: [], day: freshDay() };
+        state = freshState();
+        state.day = freshDay();
+        calYear = dateOf(todayKey()).getFullYear();
         save();
         renderWallet(true);
-        renderActions();
-        buildShop();
+        renderAll();
         toast("Tout est remis à zéro.");
       } });
   });
