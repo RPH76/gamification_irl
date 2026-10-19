@@ -4,9 +4,11 @@
 // Chaque requête doit porter le code de synchronisation dans l'en-tête X-Sync-Code.
 const crypto = require("crypto");
 
-const KEY = "eraph:state";
-const REV = "eraph:rev";
-const BACKUPS = "eraph:backups"; // les 60 dernières versions, en cas de pépin
+// Les prévisualisations ont leurs propres clés : les essais ne touchent jamais les vraies données.
+const NS = process.env.VERCEL_ENV === "production" ? "eraph" : `eraph-${process.env.VERCEL_ENV || "dev"}`;
+const KEY = `${NS}:state`;
+const REV = `${NS}:rev`;
+const BACKUPS = `${NS}:backups`; // les 60 dernières versions, en cas de pépin
 
 // Écriture atomique : refusée si la version du serveur a changé depuis celle que l'appareil connaît.
 const COMPARE_AND_SET = `
