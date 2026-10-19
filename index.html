@@ -618,8 +618,8 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
         <p class="round-hint" id="round-hint"></p>
       </div>
       <ul class="rules">
-        <li>Intérêts : 1 % par jour, arrondis au dixième supérieur.</li>
-        <li>Dès 20 ℝ, 20 ℝ partent au porte-monnaie ; les arrondis restent ici.</li>
+        <li>Intérêts : 1 % par jour, arrondis au centime inférieur.</li>
+        <li>Dès que la banque dépasse 20 ℝ, 20 ℝ partent au porte-monnaie ; les arrondis restent ici.</li>
         <li>Une journée négative est d'abord prélevée ici, le reste sur le porte-monnaie.</li>
       </ul>
       <section class="ledger" aria-labelledby="h-ledger">
@@ -700,14 +700,15 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 (function () {
   "use strict";
 
-  // Tous les montants sont stockés en dixièmes de ℝ (entiers) : 12,40 ℝ = 124.
-  // Tout calcul qui tombe entre deux dixièmes est arrondi au dixième supérieur.
+  // Tous les montants sont stockés en centimes de ℝ (entiers) : 12,40 ℝ = 1240.
+  // Tout calcul qui tombe entre deux centimes est arrondi au centime inférieur.
 
   // ---------- Données ----------
-  // r : valeur en ℝ ; qty : la case ouvre une barre de quantité ; value(n, ctx) : valeur dynamique en dixièmes.
+  // r : valeur en ℝ ; qty : la case ouvre une barre de quantité ; value(n) : valeur dynamique en centimes ;
+  // label et note peuvent être des fonctions (texte qui change selon le jour).
   var POSITIVES = [
     { id: "vaisselle", label: "Vaisselle", r: 1 },
-    { id: "dodo", label: "Dodo avant 22h30", r: 2 },
+    { id: "dodo", label: function () { return "Dodo avant " + dodoTime(); }, r: 2 },
     { id: "no-masturbation", label: "∅ Masturbation", value: noMasturbationValue, note: noMasturbationNote },
     { id: "no-junk", label: "∅ Junk Food", r: 3 },
     { id: "menage", label: "Ménage", r: 3 },
@@ -729,16 +730,18 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     { id: "vaisselle-pas-faite", label: "Vaisselle pas faite", note: "2 ℝ à chaque fois", r: -2,
       qty: { max: 10, caption: "nombre de fois" } },
     { id: "gaspillage", label: "Légumes, fruits, produits gaspillés", r: -3 },
-    { id: "dodo-tard", label: "Dodo > 22h30", r: -2 }
+    { id: "dodo-tard", label: function () { return "Dodo > " + dodoTime(); }, r: -2 }
   ];
-  // Prix en dixièmes. La liste est toujours affichée par prix croissant.
+  // Prix en centimes. La liste est toujours affichée par prix croissant.
   var SHOP = [
-    { id: "venum-ice", name: "Gants de boxe VENUM", sub: "Bleu Ice", price: 320, art: glovesSvg }
+    { id: "venum-ice", name: "Gants de boxe VENUM", sub: "Bleu Ice", price: 3200, art: glovesSvg }
   ];
 
-  var MINECRAFT_DAYS = 30;          // la valeur d'une session tombe à 0 après 30 jours d'affilée
-  var NO_MAST_STEPS = [60, 75, 90]; // 6 ; 7,5 ; 9 ℝ (maximum)
-  var BANK_THRESHOLD = 200;         // 20 ℝ
+  var MINECRAFT_START = 200;           // 2 ℝ par session le 1er jour de la série
+  var NO_MAST_STEPS = [600, 750, 900]; // 6 ; 7,50 ; 9 ℝ (maximum)
+  var BANK_THRESHOLD = 2000;           // 20 ℝ : le versement part dès que la banque les dépasse
+  var DODO_FIRST = 24 * 60;            // minuit, le premier jour
+  var DODO_LAST = 22 * 60 + 30;        // 22h30 au plus tôt, une minute de moins chaque jour
   var MONTHS = ["Janv.", "Févr.", "Mars", "Avr.", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc."];
   var MONTH_LETTERS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
@@ -757,13 +760,15 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   }
   function todayKey() { return addDays(keyOf(new Date()), state ? state.offset || 0 : 0); }
   function shortDate(key) { var p = key.split("-"); return p[2] + "/" + p[1]; }
+  function daysBetween(a, b) { return Math.round((dateOf(b) - dateOf(a)) / 86400000); }
+  function monthLength(key) { var d = dateOf(key); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); }
 
   // ---------- État (stocké dans ce navigateur) ----------
   var KEY = "eraph-v1";
   var state = null;
   function freshDay() { return { date: todayKey(), checks: {}, qty: {}, validated: false, total: 0 }; }
   function freshState() {
-    return { v: 2, offset: 0, balance: 0, days: {}, purchases: [], bank: { balance: 0, last: keyOf(new Date()), log: [] }, day: null };
+    return { v: 3, offset: 0, balance: 0, days: {}, purchases: [], bank: { balance: 0, last: keyOf(new Date()), log: [] }, dodoStart: keyOf(new Date()), day: null };
   }
   function load() {
     var s = null;
@@ -771,15 +776,31 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     if (!s || typeof s !== "object") s = freshState();
     if (!s.v) {
       // Version 1 : montants entiers en ℝ, historique sous forme de liste.
-      s.balance = (s.balance || 0) * 10;
-      s.purchases = (s.purchases || []).map(function (p) { return { id: p.id, date: p.date, price: p.price * 10 }; });
+      s.balance = (s.balance || 0) * 100;
+      s.purchases = (s.purchases || []).map(function (p) { return { id: p.id, date: p.date, price: p.price * 100 }; });
       s.days = {};
       (s.history || []).forEach(function (h) {
-        s.days[h.date] = { total: h.total * 10, checks: h.checks || {}, qty: h.qty || {}, wallet: h.total * 10, bank: 0 };
+        s.days[h.date] = { total: h.total * 100, checks: h.checks || {}, qty: h.qty || {}, wallet: h.total * 100, bank: 0 };
       });
-      if (s.day && s.day.validated) s.day.total *= 10;
+      if (s.day && s.day.validated) s.day.total *= 100;
       delete s.history;
-      s.v = 2;
+      s.v = 3;
+    }
+    if (s.v === 2) {
+      // Version 2 : montants en dixièmes.
+      var x10 = function (n) { return (n || 0) * 10; };
+      s.balance = x10(s.balance);
+      (s.purchases || []).forEach(function (p) { p.price = x10(p.price); });
+      Object.keys(s.days || {}).forEach(function (k) {
+        var d = s.days[k];
+        d.total = x10(d.total); d.wallet = x10(d.wallet); d.bank = x10(d.bank);
+      });
+      if (s.day) s.day.total = x10(s.day.total);
+      if (s.bank) {
+        s.bank.balance = x10(s.bank.balance);
+        (s.bank.log || []).forEach(function (op) { op.amount = x10(op.amount); });
+      }
+      s.v = 3;
     }
     if (typeof s.balance !== "number") s.balance = 0;
     if (typeof s.offset !== "number") s.offset = 0;
@@ -787,6 +808,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     if (!Array.isArray(s.purchases)) s.purchases = [];
     if (!s.bank) s.bank = { balance: 0, last: keyOf(new Date()), log: [] };
     if (!Array.isArray(s.bank.log)) s.bank.log = [];
+    if (!s.dodoStart) s.dodoStart = keyOf(new Date());
     return s;
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
@@ -795,14 +817,15 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 
   // ---------- Montants ----------
   var MINUS = "−";
+  function cents(a) { return String(a % 100).padStart(2, "0"); }
   function fmt(t) {
-    var a = Math.abs(t), s = String(Math.floor(a / 10));
-    if (a % 10) s += "," + (a % 10) + "0";
+    var a = Math.abs(t), s = String(Math.floor(a / 100));
+    if (a % 100) s += "," + cents(a);
     return (t < 0 ? MINUS : "") + s;
   }
   function fmt2(t) {
     var a = Math.abs(t);
-    return (t < 0 ? MINUS : "") + Math.floor(a / 10) + "," + (a % 10) + "0";
+    return (t < 0 ? MINUS : "") + Math.floor(a / 100) + "," + cents(a);
   }
   function signed(t) { return (t > 0 ? "+" : "") + fmt(t); }
   function rHtml(text) { return text + ' <span class="r">ℝ</span>'; }
@@ -814,17 +837,32 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     while (state.days[k] && state.days[k].checks && state.days[k].checks[id]) { n++; k = addDays(k, -1); }
     return n;
   }
-  // Minecraft : 2 ℝ par session le 1er jour, puis baisse chaque jour d'utilisation consécutive, 0 au bout d'un mois.
-  function minecraftPerSession(day) {
-    if (day > MINECRAFT_DAYS) return 0;
-    return Math.ceil(20 * (MINECRAFT_DAYS + 1 - day) / MINECRAFT_DAYS - 1e-9);
+  // Minecraft : 2 ℝ par session le 1er jour de la série, puis une baisse régulière chaque jour d'utilisation
+  // consécutive, jusqu'à 0 ℝ le dernier jour du mois de la série (28 à 31 jours selon le mois où elle a commencé).
+  // Paliers : 2 ℝ ÷ (jours du mois − 1), arrondis au centime le plus proche pour rester réguliers.
+  function minecraftPerSession(day, monthDays) {
+    if (day >= monthDays) return 0;
+    return Math.round(MINECRAFT_START * (monthDays - day) / (monthDays - 1));
+  }
+  function minecraftSeries() {
+    var day = streakBefore("minecraft", state.day.date) + 1;
+    return { day: day, monthDays: monthLength(addDays(state.day.date, 1 - day)) };
   }
   function minecraftValue(n) {
-    return n * minecraftPerSession(streakBefore("minecraft", state.day.date) + 1);
+    var s = minecraftSeries();
+    return n * minecraftPerSession(s.day, s.monthDays);
   }
   function minecraftNote() {
-    var day = streakBefore("minecraft", state.day.date) + 1;
-    return "1h max / session · 2 sessions max · jour " + day + " d'affilée : " + fmt(minecraftPerSession(day)) + " ℝ / session";
+    var s = minecraftSeries();
+    return "1h max / session · 2 sessions max · jour " + Math.min(s.day, s.monthDays) + "/" + s.monthDays + " : " +
+      fmt2(minecraftPerSession(s.day, s.monthDays)) + " ℝ / session";
+  }
+  // Heure du dodo : minuit le premier jour, puis une minute de moins chaque jour, jusqu'à 22h30.
+  function dodoTime() {
+    var k = Math.max(0, daysBetween(state.dodoStart, state.day.date));
+    var m = Math.max(DODO_LAST, DODO_FIRST - k);
+    if (m === DODO_FIRST) return "minuit";
+    return Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0");
   }
   function noMasturbationValue() {
     var day = streakBefore("no-masturbation", state.day.date) + 1;
@@ -836,7 +874,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   }
   function actionValue(a, n) {
     if (a.value) return a.value(n);
-    var t = Math.round(a.r * 10);
+    var t = Math.round(a.r * 100);
     return a.qty ? t * n : t;
   }
 
@@ -863,7 +901,9 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       input.id = id;
       label.appendChild(input);
       label.appendChild(el("span", "box", CHECK));
-      var text = el("span", "label", a.label);
+      var text = el("span", "label");
+      var title = el("span");
+      text.appendChild(title);
       var note = null;
       if (a.note) {
         note = el("small");
@@ -874,7 +914,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       label.appendChild(val);
       wrap.appendChild(label);
 
-      var row = { a: a, input: input, val: val, note: note };
+      var row = { a: a, input: input, val: val, title: title, note: note };
       if (a.qty) {
         var q = el("div", "qty");
         q.hidden = true;
@@ -941,6 +981,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       var row = rows[id], a = row.a, on = !!state.day.checks[id];
       row.input.checked = on;
       row.input.disabled = locked;
+      row.title.textContent = typeof a.label === "function" ? a.label() : a.label;
       if (row.note) row.note.textContent = typeof a.note === "function" ? a.note() : a.note;
       if (a.qty) {
         var n = qtyOf(a);
@@ -996,10 +1037,10 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     state.bank.log.unshift({ date: todayKey(), label: label, amount: amount });
     if (state.bank.log.length > 60) state.bank.log.length = 60;
   }
-  // Dès 20 ℝ, 20 ℝ partent au porte-monnaie ; le reste (les arrondis) reste à la banque.
+  // Quand la banque dépasse 20 ℝ, 20 ℝ partent au porte-monnaie ; le reste (les arrondis) reste à la banque.
   function sweep() {
     var moved = 0;
-    while (state.bank.balance >= BANK_THRESHOLD) {
+    while (state.bank.balance > BANK_THRESHOLD) {
       state.bank.balance -= BANK_THRESHOLD;
       state.balance += BANK_THRESHOLD;
       moved += BANK_THRESHOLD;
@@ -1007,13 +1048,13 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     }
     return moved;
   }
-  // Intérêts : 1 % par jour, arrondis au dixième supérieur.
+  // Intérêts : 1 % par jour, arrondis au centime inférieur.
   function applyInterest() {
     var today = todayKey(), earned = 0, moved = 0, guard = 0;
     while (state.bank.last < today && guard++ < 4000) {
       state.bank.last = addDays(state.bank.last, 1);
-      if (state.bank.balance > 0) {
-        var next = Math.ceil(state.bank.balance * 101 / 100);
+      if (state.bank.balance >= 100) {
+        var next = Math.floor(state.bank.balance * 101 / 100);
         var gain = next - state.bank.balance;
         state.bank.balance = next;
         earned += gain;
@@ -1025,7 +1066,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     return { earned: earned, moved: moved };
   }
   function walletFraction() {
-    return ((state.balance % 10) + 10) % 10;
+    return ((state.balance % 100) + 100) % 100;
   }
   function roundWallet() {
     var frac = walletFraction();
