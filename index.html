@@ -408,21 +408,6 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 .ledger li span:last-child { font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ledger .empty { opacity: 0.7; }
 
-/* ---------- Mode test ---------- */
-.testbar {
-  margin-top: 64px;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
-  font-size: 0.85rem;
-  opacity: 0.7;
-}
-.testbar:hover, .testbar:focus-within { opacity: 1; }
-.testbar strong { letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.75rem; }
-.link {
-  background: none; border: 0; padding: 0; cursor: pointer;
-  text-decoration: underline; text-underline-offset: 3px; font-weight: 600;
-}
-.link:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-
 /* ---------- Boîte de dialogue ---------- */
 .modal {
   position: fixed; inset: 0; z-index: 40;
@@ -629,13 +614,6 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     </div>
   </main>
 
-  <footer class="testbar" aria-label="Mode test">
-    <strong>Mode test</strong>
-    <button class="link" type="button" id="t-next">Passer au jour suivant</button>
-    <button class="link" type="button" id="t-today">Revenir à aujourd'hui</button>
-    <button class="link" type="button" id="t-reopen">Rouvrir la journée</button>
-    <button class="link" type="button" id="t-reset">Tout remettre à zéro</button>
-  </footer>
 </div>
 
 <!-- Boîte de dialogue (confirmations dans la page) -->
@@ -758,7 +736,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     d.setDate(d.getDate() + n);
     return keyOf(d);
   }
-  function todayKey() { return addDays(keyOf(new Date()), state ? state.offset || 0 : 0); }
+  function todayKey() { return keyOf(new Date()); }
   function shortDate(key) { var p = key.split("-"); return p[2] + "/" + p[1]; }
   function daysBetween(a, b) { return Math.round((dateOf(b) - dateOf(a)) / 86400000); }
   function monthLength(key) { var d = dateOf(key); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); }
@@ -768,7 +746,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   var state = null;
   function freshDay() { return { date: todayKey(), checks: {}, qty: {}, validated: false, total: 0 }; }
   function freshState() {
-    return { v: 3, offset: 0, balance: 0, days: {}, purchases: [], bank: { balance: 0, last: keyOf(new Date()), log: [] }, dodoStart: keyOf(new Date()), day: null };
+    return { v: 3, balance: 0, days: {}, purchases: [], bank: { balance: 0, last: keyOf(new Date()), log: [] }, dodoStart: keyOf(new Date()), day: null };
   }
   function load() {
     var s = null;
@@ -803,7 +781,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       s.v = 3;
     }
     if (typeof s.balance !== "number") s.balance = 0;
-    if (typeof s.offset !== "number") s.offset = 0;
+    delete s.offset;
     if (!s.days || typeof s.days !== "object") s.days = {};
     if (!Array.isArray(s.purchases)) s.purchases = [];
     if (!s.bank) s.bank = { balance: 0, last: keyOf(new Date()), log: [] };
@@ -1298,7 +1276,6 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 
   function renderDate() {
     var txt = dateOf(todayKey()).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    if (state.offset) txt += " · simulation +" + state.offset + " j";
     $("today").textContent = txt;
   }
   function renderAll() {
@@ -1360,62 +1337,6 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   setInterval(function () { checkNewDay(false); }, 30000);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) checkNewDay(false); });
 
-  // ---------- Mode test ----------
-  $("t-next").addEventListener("click", function () {
-    state.offset = (state.offset || 0) + 1;
-    checkNewDay(false);
-    save();
-    renderAll();
-  });
-  $("t-today").addEventListener("click", function () {
-    state.offset = 0;
-    if (state.bank.last > todayKey()) state.bank.last = todayKey();
-    state.day = freshDay();
-    if (state.days[state.day.date]) {
-      var rec = state.days[state.day.date];
-      state.day.checks = rec.checks;
-      state.day.qty = rec.qty;
-      state.day.validated = true;
-      state.day.total = rec.total;
-    }
-    calYear = dateOf(todayKey()).getFullYear();
-    save();
-    renderAll();
-    toast("Retour à la vraie date.");
-  });
-  $("t-reopen").addEventListener("click", function () {
-    var rec = state.days[state.day.date];
-    openModal("Rouvrir la journée ?",
-      rec ? "Le total de la journée (" + signed(rec.total) + " ℝ) est annulé, sur le porte-monnaie comme à la banque, et les cases redeviennent modifiables."
-          : "La journée n'est pas encore validée.",
-      rec ? { label: "Rouvrir", run: function () {
-        state.balance -= rec.wallet;
-        if (rec.bank) {
-          state.bank.balance -= rec.bank;
-          bankLog("Annulation (test)", -rec.bank);
-        }
-        delete state.days[state.day.date];
-        state.day.validated = false;
-        state.day.total = 0;
-        save();
-        renderWallet(true);
-        renderAll();
-        toast("Journée rouverte.");
-      } } : null);
-  });
-  $("t-reset").addEventListener("click", function () {
-    openModal("Tout remettre à zéro ?",
-      "Porte-monnaie et banque à 0 ℝ, calendrier, achats et historique effacés, retour à la vraie date.",
-      { label: "Remettre à zéro", run: function () {
-        state = freshState();
-        state.day = freshDay();
-        calYear = dateOf(todayKey()).getFullYear();
-        save();
-        renderWallet(true);
-        renderAll();
-        toast("Tout est remis à zéro.");
-      } });
-  });
 })();
 </script>
 </body>

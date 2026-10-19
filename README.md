@@ -1,6 +1,6 @@
 # €RAPH — gamification de la vraie vie
 
-Site statique (un seul fichier `index.html`, aucune dépendance).
+Site statique (un seul fichier `index.html`, aucune dépendance), en ligne sur https://eraph.vercel.app.
 Ouvrir `index.html` dans un navigateur, ou le servir avec n'importe quel hébergeur statique.
 
 - **Actions** : cocher les actions du jour, le total s'affiche en bas à droite, puis « Valider ».
@@ -12,5 +12,3 @@ Ouvrir `index.html` dans un navigateur, ou le servir avec n'importe quel héberg
 - Dodo : minuit le premier jour, puis une minute plus tôt chaque jour, jusqu'à 22h30.
 - Les cases se remettent à zéro chaque jour à minuit ; le porte-monnaie est conservé
   (stocké dans le navigateur, `localStorage`).
-- Le bloc « Mode test » en bas de page permet de simuler le jour suivant, revenir à la vraie date,
-  rouvrir la journée ou tout remettre à zéro.
