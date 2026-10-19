@@ -10,5 +10,15 @@ Ouvrir `index.html` dans un navigateur, ou le servir avec n'importe quel héberg
   reverse 20 ℝ au porte-monnaie dès qu'elle les dépasse, et absorbe d'abord les journées négatives.
 - Les montants sont au centime, arrondis au centime inférieur.
 - Dodo : minuit le premier jour, puis une minute plus tôt chaque jour, jusqu'à 22h30.
-- Les cases se remettent à zéro chaque jour à minuit ; le porte-monnaie est conservé
-  (stocké dans le navigateur, `localStorage`).
+- Les cases se remettent à zéro chaque jour à minuit ; le porte-monnaie est conservé.
+
+## Synchronisation entre appareils
+
+Les données sont gardées sur l'appareil (`localStorage`) et synchronisées par `api/state.js`
+(fonction Vercel) dans Redis (Upstash, via le Marketplace Vercel), avec les 60 dernières versions en sauvegarde.
+
+- Variables d'environnement : `KV_REST_API_URL` et `KV_REST_API_TOKEN` (posées par l'intégration Upstash),
+  `SYNC_CODE` (code de synchronisation, à garder secret).
+- Connecter un appareil : ouvrir une fois `https://eraph.vercel.app/#sync=LE-CODE`,
+  ou toucher « Non synchronisé · connecter » sous la date et saisir le code.
+- Hors ligne, les changements restent sur l'appareil et partent au retour de la connexion.

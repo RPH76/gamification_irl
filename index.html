@@ -101,6 +101,32 @@ button { font: inherit; color: inherit; }
   opacity: 0.75;
 }
 
+.sync {
+  margin-left: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sync::before {
+  content: "";
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--ink);
+  opacity: 0.35;
+}
+.sync[data-state="ok"]::before { opacity: 1; }
+.sync[data-state="busy"]::before { animation: blink 0.9s ease-in-out infinite; }
+.sync[data-state="off"], .sync[data-state="offline"], .sync[data-state="choice"] { text-decoration: underline; text-underline-offset: 3px; }
+.sync:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 3px; }
+@keyframes blink { 50% { opacity: 0.2; } }
+
 /* ---------- Actions ---------- */
 .board {
   display: grid;
@@ -425,6 +451,19 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 }
 .sheet h3 { margin: 0; font-family: var(--f-display); font-size: 1.6rem; line-height: 1.1; text-wrap: balance; }
 .sheet p { margin: 0; font-size: 1.1rem; }
+.modal-input {
+  width: 100%;
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--sand-light);
+  border: 2.5px solid var(--ink);
+  border-radius: 12px;
+  padding: 0.5em 0.7em;
+}
+.modal-input:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .sheet .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
 .sheet .btn { font-size: 1.05rem; }
 
@@ -542,7 +581,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       <span id="wallet-amount">0</span><span class="r" aria-label="€RAPH">ℝ</span>
     </div>
   </header>
-  <p class="date" id="today"></p>
+  <p class="date"><span id="today"></span><button class="sync" type="button" id="sync" data-state="off">Non synchronisé · connecter</button></p>
 
   <!-- Page Actions -->
   <main id="page-actions">
@@ -621,6 +660,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <h3 id="modal-title"></h3>
     <p id="modal-text"></p>
+    <input class="modal-input" id="modal-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code de synchronisation" hidden>
     <div class="actions">
       <button class="btn ghost" type="button" id="modal-cancel">Annuler</button>
       <button class="btn" type="button" id="modal-ok">OK</button>
@@ -751,6 +791,10 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   function load() {
     var s = null;
     try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+    return normalize(s);
+  }
+  // Met n'importe quelle version des données (locale ou venant du serveur) au format actuel.
+  function normalize(s) {
     if (!s || typeof s !== "object") s = freshState();
     if (!s.v) {
       // Version 1 : montants entiers en ℝ, historique sous forme de liste.
@@ -789,9 +833,196 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     if (!s.dodoStart) s.dodoStart = keyOf(new Date());
     return s;
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
-  state = load();
-  if (!state.day || state.day.date !== todayKey()) state.day = freshDay();
+  function persistLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  // Chaque modification est enregistrée sur l'appareil, puis envoyée au serveur.
+  function save() {
+    persistLocal();
+    if (sync.code) {
+      sync.dirty = true;
+      saveSync();
+      schedulePush();
+    }
+  }
+  function useState(s) {
+    state = normalize(s);
+    if (!state.day || state.day.date !== todayKey()) state.day = freshDay();
+  }
+
+  // ---------- Synchronisation entre appareils ----------
+  // Le serveur garde la version de référence ; chaque appareil connaît le numéro de version (rev) qu'il a reçu.
+  var SYNC_KEY = "eraph-sync";
+  var sync = loadSync();
+  var syncStatus = "off", pushTimer = null, pushing = false, pulling = false;
+  function loadSync() {
+    var s = null;
+    try { s = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch (e) {}
+    if (!s || typeof s !== "object") s = {};
+    return { code: s.code || null, rev: s.rev || 0, dirty: !!s.dirty };
+  }
+  function saveSync() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) {} }
+  function api(method, body, code) {
+    return fetch("/api/state", {
+      method: method,
+      headers: { "Content-Type": "application/json", "X-Sync-Code": code || sync.code },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+      keepalive: method === "PUT"
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
+    });
+  }
+  function schedulePush() {
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(push, 800);
+  }
+  function push() {
+    if (!sync.code || !sync.dirty) return;
+    if (pushing || pulling) { schedulePush(); return; }
+    pushing = true;
+    setSyncStatus("busy");
+    var sent = JSON.stringify(state);
+    api("PUT", { state: state, baseRev: sync.rev }).then(function (r) {
+      pushing = false;
+      if (r.status === 200) {
+        sync.rev = r.data.rev;
+        sync.dirty = JSON.stringify(state) !== sent; // une action a eu lieu pendant l'envoi
+        saveSync();
+        if (sync.dirty) schedulePush(); else setSyncStatus("ok");
+      } else if (r.status === 409) {
+        sync.dirty = false;
+        adopt(r.data.state, r.data.rev);
+        toast("Mis à jour depuis un autre appareil : vérifie ta dernière action.");
+      } else if (r.status === 401) {
+        lostCode();
+      } else {
+        setSyncStatus("offline");
+      }
+    }, function () {
+      pushing = false;
+      setSyncStatus("offline");
+    });
+  }
+  function pull() {
+    if (!sync.code || pulling || pushing) return;
+    pulling = true;
+    setSyncStatus("busy");
+    api("GET").then(function (r) {
+      pulling = false;
+      if (r.status === 401) return lostCode();
+      if (r.status !== 200) return setSyncStatus("offline");
+      var remote = r.data;
+      if (!remote.state) {
+        // Serveur vide : cet appareil devient la référence.
+        sync.rev = remote.rev || 0;
+        sync.dirty = true;
+        saveSync();
+        return push();
+      }
+      if (remote.rev === sync.rev) {
+        if (sync.dirty) return push();
+        return setSyncStatus("ok");
+      }
+      if (!sync.dirty || JSON.stringify(remote.state) === JSON.stringify(state)) {
+        sync.dirty = false;
+        return adopt(remote.state, remote.rev);
+      }
+      setSyncStatus("choice");
+      chooseVersion(remote);
+    }, function () {
+      pulling = false;
+      setSyncStatus("offline");
+    });
+  }
+  // Reprend la version du serveur, puis applique la journée en cours (intérêts, nouvelle journée).
+  function adopt(remoteState, rev) {
+    useState(remoteState);
+    sync.rev = rev;
+    saveSync();
+    persistLocal();
+    calYear = dateOf(todayKey()).getFullYear();
+    setSyncStatus("ok");
+    renderAll();
+    renderWallet(true);
+    checkNewDay(true);
+  }
+  function summary(s) {
+    var n = Object.keys(s.days || {}).length;
+    return fmt(s.balance) + " ℝ au porte-monnaie, " + fmt2(s.bank.balance) + " ℝ à la banque, " +
+      n + (n > 1 ? " jours validés" : " jour validé");
+  }
+  function chooseVersion(remote) {
+    var other = normalize(JSON.parse(JSON.stringify(remote.state)));
+    openModal("Quelle version garder ?",
+      "Serveur : " + summary(other) + ". Cet appareil : " + summary(state) + ".",
+      { label: "Garder cet appareil", run: function () {
+        sync.rev = remote.rev;
+        sync.dirty = true;
+        saveSync();
+        push();
+      } },
+      { label: "Garder le serveur", run: function () {
+        sync.dirty = false;
+        adopt(remote.state, remote.rev);
+      } });
+  }
+  function hasData(s) {
+    return s.balance !== 0 || s.bank.balance !== 0 || s.purchases.length > 0 || Object.keys(s.days).length > 0;
+  }
+  function connect(code) {
+    code = String(code || "").trim().toUpperCase();
+    if (!code) return Promise.resolve(false);
+    setSyncStatus("busy");
+    return api("GET", null, code).then(function (r) {
+      if (r.status === 401) { setSyncStatus(sync.code ? "ok" : "off"); return "Ce code n'est pas le bon."; }
+      if (r.status !== 200) { setSyncStatus(sync.code ? "offline" : "off"); return "Serveur injoignable. Réessaie dans un instant."; }
+      sync = { code: code, rev: 0, dirty: hasData(state) };
+      saveSync();
+      pull();
+      return true;
+    }, function () {
+      setSyncStatus(sync.code ? "offline" : "off");
+      return "Pas de connexion internet.";
+    });
+  }
+  function lostCode() {
+    sync = { code: null, rev: 0, dirty: false };
+    saveSync();
+    setSyncStatus("off");
+    toast("Le code de synchronisation n'est plus valable : reconnecte cet appareil.");
+  }
+  function setSyncStatus(st) {
+    syncStatus = st;
+    var b = $("sync"), label = {
+      off: "Non synchronisé · connecter",
+      busy: "Synchronisation…",
+      choice: "Version à choisir",
+      ok: "Synchronisé",
+      offline: sync.dirty ? "Hors ligne · envoi en attente" : "Hors ligne"
+    }[st];
+    if (!b) return;
+    b.textContent = label;
+    b.dataset.state = st;
+  }
+  function askCode(message) {
+    openModal("Synchroniser cet appareil",
+      message || "Entre ton code de synchronisation. Tu ne le feras qu'une fois sur cet appareil.",
+      { label: "Connecter", keepOpen: true, run: function () {
+        var input = $("modal-input");
+        $("modal-ok").disabled = true;
+        connect(input.value).then(function (res) {
+          $("modal-ok").disabled = false;
+          if (res === true) {
+            closeModal();
+            toast("Appareil synchronisé !");
+          } else if (res) {
+            $("modal-text").textContent = res;
+            input.focus();
+          }
+        });
+      } }, null, true);
+  }
+
+  useState(load());
 
   // ---------- Montants ----------
   var MINUS = "−";
@@ -1236,18 +1467,24 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   }
 
   // ---------- Dialogue & notification ----------
-  var modalAction = null;
-  function openModal(title, text, action) {
+  var modalAction = null, modalAlt = null;
+  // alt : action facultative portée par le second bouton ; withInput : affiche le champ de saisie.
+  function openModal(title, text, action, alt, withInput) {
     modalAction = action;
+    modalAlt = alt || null;
     $("modal-title").textContent = title;
     $("modal-text").textContent = text;
     $("modal-ok").hidden = !action;
-    $("modal-cancel").textContent = action ? "Annuler" : "Fermer";
+    $("modal-ok").disabled = false;
+    $("modal-cancel").textContent = alt ? alt.label : action ? "Annuler" : "Fermer";
     if (action) $("modal-ok").textContent = action.label;
+    var input = $("modal-input");
+    input.hidden = !withInput;
+    input.value = "";
     $("modal").hidden = false;
-    (action ? $("modal-ok") : $("modal-cancel")).focus();
+    (withInput ? input : action ? $("modal-ok") : $("modal-cancel")).focus();
   }
-  function closeModal() { $("modal").hidden = true; modalAction = null; }
+  function closeModal() { $("modal").hidden = true; modalAction = null; modalAlt = null; }
   var toastTimer;
   function toast(msg) {
     var t = $("toast");
@@ -1311,23 +1548,45 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   // ---------- Démarrage ----------
   buildList(POSITIVES, $("list-pos"));
   buildList(NEGATIVES, $("list-neg"));
+  // Lien de connexion : eraph.vercel.app/#sync=CODE (le code est retiré de l'adresse aussitôt).
+  function syncLink() {
+    var m = /^#sync=(.+)$/.exec(location.hash);
+    if (!m) return false;
+    history.replaceState(null, "", location.pathname + "#actions");
+    route();
+    connect(decodeURIComponent(m[1])).then(function (res) {
+      if (res === true) toast("Appareil synchronisé !");
+      else askCode(res);
+    });
+    return true;
+  }
   checkNewDay(false);
-  save();
+  persistLocal();
   renderAll();
   route();
+  setSyncStatus(sync.code ? (sync.dirty ? "offline" : "ok") : "off");
+  if (!syncLink()) pull();
 
-  window.addEventListener("hashchange", route);
+  window.addEventListener("hashchange", function () { if (!syncLink()) route(); });
   phoneQuery.addEventListener("change", function () { if (!$("page-calendrier").hidden) renderCalendar(); });
   $("validate").addEventListener("click", validate);
   $("round").addEventListener("click", roundWallet);
   $("cal-prev").addEventListener("click", function () { calYear--; renderCalendar(); });
   $("cal-next").addEventListener("click", function () { calYear++; renderCalendar(); });
   $("fx").addEventListener("click", closeFx);
-  $("modal-cancel").addEventListener("click", closeModal);
+  $("modal-cancel").addEventListener("click", function () {
+    var alt = modalAlt;
+    closeModal();
+    if (alt) alt.run();
+  });
   $("modal-ok").addEventListener("click", function () {
     var a = modalAction;
+    if (a && a.keepOpen) return a.run();
     closeModal();
     if (a) a.run();
+  });
+  $("modal-input").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); $("modal-ok").click(); }
   });
   $("modal").addEventListener("click", function (e) { if (e.target === $("modal")) closeModal(); });
   document.addEventListener("keydown", function (e) {
@@ -1335,7 +1594,18 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     if ((e.key === "Enter" || e.key === " ") && !$("fx").hidden) { e.preventDefault(); closeFx(); }
   });
   setInterval(function () { checkNewDay(false); }, 30000);
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) checkNewDay(false); });
+  setInterval(function () { if (!document.hidden) pull(); }, 60000);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { if (sync.dirty) { clearTimeout(pushTimer); push(); } return; }
+    pull();
+    checkNewDay(false);
+  });
+  window.addEventListener("online", function () { if (sync.dirty) push(); else pull(); });
+  $("sync").addEventListener("click", function () {
+    if (syncStatus === "off") askCode();
+    else if (syncStatus === "offline") { if (sync.dirty) push(); else pull(); }
+    else pull();
+  });
 
 })();
 </script>
