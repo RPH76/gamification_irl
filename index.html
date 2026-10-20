@@ -382,8 +382,9 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 .dot.today { box-shadow: 0 0 0 3px var(--sand), 0 0 0 5px var(--ink); }
 .dash { display: block; width: var(--dot); height: 2px; background: var(--ink); opacity: 0.6; }
 
-/* ---------- Banque ---------- */
-.bank { display: grid; gap: 34px; margin-top: 30px; max-width: 760px; }
+/* ---------- Paramètres ---------- */
+.settings { display: grid; gap: 72px; margin-top: 30px; max-width: 760px; }
+.bank { display: grid; gap: 34px; }
 .bank-name {
   margin: 0;
   font-family: var(--f-display);
@@ -433,6 +434,73 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 .ledger li span:first-child { opacity: 0.7; font-variant-numeric: tabular-nums; }
 .ledger li span:last-child { font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ledger .empty { opacity: 0.7; }
+
+.actions-admin { display: grid; gap: 30px; }
+.alist-groups { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px 40px; }
+.alist { margin: 0; padding: 0; list-style: none; display: grid; }
+.alist li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding-block: 10px;
+  border-bottom: 1.5px solid var(--ink-faint);
+}
+.alist .name { font-size: 1.12rem; font-weight: 650; line-height: 1.2; overflow-wrap: anywhere; }
+.alist .name small { display: block; margin-top: 2px; font-size: 0.85rem; font-weight: 500; opacity: 0.75; }
+.alist .v { font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.alist .empty { display: block; opacity: 0.7; }
+.del {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  padding: 0.3em 0.8em;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.del:hover { background: var(--sand-light); }
+.del:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.new-action {
+  display: grid;
+  gap: 18px;
+  max-width: 560px;
+  padding: 24px;
+  border-radius: 20px;
+  background: var(--sand-light);
+}
+.new-title { margin: 0; font-size: 1.35rem; font-weight: 800; }
+.field { display: grid; gap: 8px; }
+.field > label, .field-label { font-weight: 700; letter-spacing: 0.02em; }
+.field-input {
+  width: 100%;
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 650;
+  color: var(--ink);
+  background: var(--sand);
+  border: 2.5px solid var(--ink);
+  border-radius: 12px;
+  padding: 0.5em 0.7em;
+}
+.field-input::placeholder { color: var(--ink-soft); }
+.field-input:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.seg { display: inline-flex; justify-self: start; border: 2.5px solid var(--ink); border-radius: 999px; overflow: hidden; }
+.seg label { position: relative; cursor: pointer; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg span { display: block; padding: 0.45em 1.15em; font-weight: 700; }
+.seg input:checked + span { background: var(--ink); color: var(--sand); }
+.seg input:focus-visible + span { outline: 3px solid var(--ink); outline-offset: -6px; }
+.slider-row { display: grid; grid-template-columns: minmax(0, 1fr) 2ch; align-items: center; gap: 14px; }
+.slider-row output { font-size: 1.7rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+.formula { margin: 0; font-size: 1.15rem; font-weight: 650; }
+.formula strong { font-size: 1.35rem; font-weight: 800; }
+.form-error { margin: 0; font-weight: 700; }
+@media (max-width: 640px) {
+  .alist-groups { grid-template-columns: minmax(0, 1fr); }
+  .new-action { padding: 18px; }
+}
 
 /* ---------- Boîte de dialogue ---------- */
 .modal {
@@ -575,7 +643,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       <a class="tab" id="tab-actions" href="#actions">Actions</a>
       <a class="tab" id="tab-shop" href="#shop">Shop</a>
       <a class="tab" id="tab-calendrier" href="#calendrier">Calendrier</a>
-      <a class="tab" id="tab-banque" href="#banque">Banque</a>
+      <a class="tab" id="tab-parametres" href="#parametres">Paramètres</a>
     </nav>
     <div class="pill wallet-pill" id="wallet" title="Porte-monnaie €RAPH" aria-live="polite">
       <span id="wallet-amount">0</span><span class="r" aria-label="€RAPH">ℝ</span>
@@ -628,11 +696,12 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     <div class="cal-wrap"><div class="cal" id="cal"></div></div>
   </main>
 
-  <!-- Page Banque -->
-  <main id="page-banque" hidden>
-    <div class="bank">
+  <!-- Page Paramètres -->
+  <main id="page-parametres" hidden>
+    <div class="settings">
+    <section class="bank" aria-labelledby="h-bank">
       <div>
-        <h2 class="bank-name">Banque Sabatier</h2>
+        <h2 class="bank-name" id="h-bank">Banque Sabatier</h2>
         <p class="bank-motto">« Kénanafout, mets tes patates d'dans ! »</p>
       </div>
       <div>
@@ -645,11 +714,59 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
         <li>Intérêts : 1 % par jour, arrondis au centime inférieur.</li>
         <li>Dès que la banque dépasse 20 ℝ, 20 ℝ partent au porte-monnaie ; les arrondis restent ici.</li>
         <li>Une journée négative est d'abord prélevée ici, le reste sur le porte-monnaie.</li>
+        <li>À la fin de chaque journée, les centimes gagnés du porte-monnaie arrivent ici tout seuls.</li>
       </ul>
       <section class="ledger" aria-labelledby="h-ledger">
         <h3 id="h-ledger">Relevé</h3>
         <ol id="ledger"></ol>
       </section>
+    </section>
+
+    <section class="actions-admin" aria-labelledby="h-alist">
+      <h2 class="bank-name" id="h-alist">Liste d'actions</h2>
+      <div class="alist-groups">
+        <div>
+          <h3 class="col-head">Positives</h3>
+          <ul class="alist" id="alist-pos"></ul>
+        </div>
+        <div>
+          <h3 class="col-head">Négatives</h3>
+          <ul class="alist" id="alist-neg"></ul>
+        </div>
+      </div>
+
+      <form class="new-action" id="new-action" novalidate>
+        <h3 class="new-title">Nouvelle action</h3>
+        <div class="field">
+          <label for="na-name">Nom de l'action</label>
+          <input class="field-input" id="na-name" type="text" maxlength="40" autocomplete="off" placeholder="Ex. : Lecture 30 min">
+        </div>
+        <div class="field">
+          <span class="field-label" id="na-kind-label">Type</span>
+          <div class="seg" role="radiogroup" aria-labelledby="na-kind-label">
+            <label><input type="radio" name="na-kind" id="na-pos" value="1" checked><span>Positive</span></label>
+            <label><input type="radio" name="na-kind" id="na-neg" value="-1"><span>Négative</span></label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="na-diff">Difficulté (1 à 5)</label>
+          <div class="slider-row">
+            <input id="na-diff" type="range" min="1" max="5" step="1" value="3">
+            <output id="na-diff-out" for="na-diff">3</output>
+          </div>
+        </div>
+        <div class="field">
+          <label for="na-impact">Impact (1 à 5)</label>
+          <div class="slider-row">
+            <input id="na-impact" type="range" min="1" max="5" step="1" value="3">
+            <output id="na-impact-out" for="na-impact">3</output>
+          </div>
+        </div>
+        <p class="formula" id="na-formula"></p>
+        <p class="form-error" id="na-error" hidden></p>
+        <div><button class="btn" type="submit">Ajouter l'action</button></div>
+      </form>
+    </section>
     </div>
   </main>
 
@@ -831,6 +948,9 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     if (!s.bank) s.bank = { balance: 0, last: keyOf(new Date()), log: [] };
     if (!Array.isArray(s.bank.log)) s.bank.log = [];
     if (!s.dodoStart) s.dodoStart = keyOf(new Date());
+    if (!Array.isArray(s.custom)) s.custom = [];   // actions créées dans Paramètres
+    if (!Array.isArray(s.hidden)) s.hidden = [];   // actions d'origine supprimées de la liste
+    if (!s.lastSeen) s.lastSeen = keyOf(new Date());
     return s;
   }
   function persistLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
@@ -1097,6 +1217,32 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   }
   var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sand)"/></svg>';
 
+  // ---------- Liste des actions (d'origine + créées, moins les supprimées) ----------
+  // Valeur d'une action créée : difficulté + impact × 0,1 (en ℝ), en positif ou en négatif.
+  function customValue(c) { return c.sign * (c.difficulty * 100 + c.impact * 10); }
+  function customAction(c) {
+    return {
+      id: c.id, label: c.label, custom: true,
+      note: "Difficulté " + c.difficulty + " · Impact " + c.impact,
+      value: function () { return customValue(c); }
+    };
+  }
+  function actionList(sign) {
+    var base = (sign > 0 ? POSITIVES : NEGATIVES).filter(function (a) { return state.hidden.indexOf(a.id) < 0; });
+    return base.concat(state.custom.filter(function (c) { return c.sign === sign; }).map(customAction));
+  }
+  var builtKey = "";
+  function ensureLists() {
+    var key = JSON.stringify([state.hidden, state.custom]);
+    if (key === builtKey) return;
+    builtKey = key;
+    rows = {};
+    $("list-pos").innerHTML = "";
+    $("list-neg").innerHTML = "";
+    buildList(actionList(1), $("list-pos"));
+    buildList(actionList(-1), $("list-neg"));
+  }
+
   // ---------- Page Actions ----------
   var rows = {};
   function buildList(list, container) {
@@ -1185,6 +1331,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     return Object.keys(rows).some(function (id) { return state.day.checks[id]; });
   }
   function renderActions() {
+    ensureLists();
     var locked = state.day.validated;
     Object.keys(rows).forEach(function (id) {
       var row = rows[id], a = row.a, on = !!state.day.checks[id];
@@ -1277,6 +1424,15 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   function walletFraction() {
     return ((state.balance % 100) + 100) % 100;
   }
+  // Fin de journée : les centimes gagnés du porte-monnaie partent tout seuls à la banque.
+  function endOfDayRound(dayKey) {
+    var frac = walletFraction();
+    if (state.balance <= 0 || !frac) return 0;
+    state.balance -= frac;
+    state.bank.balance += frac;
+    state.bank.log.unshift({ date: dayKey, label: "Arrondi de fin de journée", amount: frac });
+    return frac;
+  }
   function roundWallet() {
     var frac = walletFraction();
     if (!frac) return;
@@ -1308,6 +1464,87 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       li.appendChild(el("span", null, rHtml((op.amount > 0 ? "+" : "") + fmt2(op.amount))));
       ol.appendChild(li);
     });
+  }
+
+  // ---------- Paramètres : liste d'actions ----------
+  function adminValue(a) {
+    if (a.custom) return rHtml(signed(a.value()));
+    if (a.value) return "variable";
+    return rHtml(signed(Math.round(a.r * 100))) + (a.qty ? " / fois" : "");
+  }
+  function labelOf(a) { return typeof a.label === "function" ? a.label() : a.label; }
+  function renderActionAdmin() {
+    [[1, "alist-pos"], [-1, "alist-neg"]].forEach(function (g) {
+      var ul = $(g[1]);
+      ul.innerHTML = "";
+      var list = actionList(g[0]);
+      if (!list.length) ul.appendChild(el("li", null, '<span class="empty">Aucune action.</span>'));
+      list.forEach(function (a) {
+        var li = el("li");
+        var name = el("span", "name");
+        name.textContent = labelOf(a);
+        if (a.custom) name.appendChild(el("small", null, a.note));
+        li.appendChild(name);
+        li.appendChild(el("span", "v", adminValue(a)));
+        var del = el("button", "del", "Supprimer");
+        del.type = "button";
+        del.setAttribute("aria-label", "Supprimer " + labelOf(a));
+        del.addEventListener("click", function () { askDelete(a); });
+        li.appendChild(del);
+        ul.appendChild(li);
+      });
+    });
+    renderFormula();
+  }
+  // Double confirmation avant de supprimer une action.
+  function askDelete(a) {
+    var label = labelOf(a);
+    openModal("You shoure ‘bout dat ?", "Supprimer « " + label + " » de la liste d'actions ?",
+      { label: "Oui", run: function () {
+        openModal("Really shoure ?", "« " + label + " » va disparaître de la liste. Les journées déjà validées ne changent pas.",
+          { label: "Supprimer", run: function () { deleteAction(a); } });
+      } });
+  }
+  function deleteAction(a) {
+    if (a.custom) state.custom = state.custom.filter(function (c) { return c.id !== a.id; });
+    else if (state.hidden.indexOf(a.id) < 0) state.hidden.push(a.id);
+    if (!state.day.validated) {
+      delete state.day.checks[a.id];
+      delete state.day.qty[a.id];
+    }
+    save();
+    renderAll();
+    toast("Action supprimée.");
+  }
+  function formValues() {
+    return {
+      label: $("na-name").value.trim().replace(/\s+/g, " "),
+      sign: $("na-neg").checked ? -1 : 1,
+      difficulty: +$("na-diff").value,
+      impact: +$("na-impact").value
+    };
+  }
+  function renderFormula() {
+    var f = formValues();
+    $("na-diff-out").textContent = f.difficulty;
+    $("na-impact-out").textContent = f.impact;
+    $("na-formula").innerHTML = "Valeur : " + f.difficulty + " + " + f.impact + " × 0,1 = <strong>" +
+      rHtml(signed(customValue(f))) + "</strong>";
+  }
+  function addAction(e) {
+    e.preventDefault();
+    var f = formValues(), err = $("na-error");
+    var exists = actionList(1).concat(actionList(-1)).some(function (a) {
+      return labelOf(a).toLowerCase() === f.label.toLowerCase();
+    });
+    err.hidden = true;
+    if (!f.label) { err.textContent = "Donne un nom à l'action."; err.hidden = false; $("na-name").focus(); return; }
+    if (exists) { err.textContent = "Cette action existe déjà."; err.hidden = false; $("na-name").focus(); return; }
+    state.custom.push({ id: "c-" + Date.now().toString(36), label: f.label, sign: f.sign, difficulty: f.difficulty, impact: f.impact });
+    save();
+    $("new-action").reset();
+    renderAll();
+    toast("Action ajoutée : " + f.label + " (" + signed(customValue(f)) + " ℝ)");
   }
 
   // ---------- Calendrier ----------
@@ -1495,9 +1732,10 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   }
 
   // ---------- Navigation ----------
-  var PAGES = ["actions", "shop", "calendrier", "banque"];
+  var PAGES = ["actions", "shop", "calendrier", "parametres"];
   function route() {
     var page = location.hash.slice(1);
+    if (page === "banque") page = "parametres"; // anciens liens
     if (PAGES.indexOf(page) < 0) page = "actions";
     var nav = document.querySelector(".tabs");
     PAGES.forEach(function (p) {
@@ -1520,14 +1758,23 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     renderActions();
     renderWallet(false);
     renderBank();
+    renderActionAdmin();
     buildShop();
     if (!$("page-calendrier").hidden) renderCalendar();
   }
 
   // Nouvelle journée : intérêts de la banque, cases remises à zéro, le porte-monnaie reste.
   function checkNewDay(silent) {
+    // lastSeen : dernier jour où l'app a tourné ; s'il est passé, sa fin de journée n'a pas encore été traitée.
+    var rounded = 0, seen = false;
+    if (state.lastSeen !== todayKey()) {
+      rounded = endOfDayRound(state.lastSeen);
+      state.lastSeen = todayKey();
+      seen = true;
+    }
     var r = applyInterest();
-    var changed = r.earned || r.moved;
+    r.moved += sweep();
+    var changed = seen || rounded || r.earned || r.moved;
     if (state.day.date !== todayKey()) {
       state.day = freshDay();
       calYear = dateOf(todayKey()).getFullYear();
@@ -1540,14 +1787,15 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     if (!silent && r.moved) {
       renderWallet(true);
       toast("Banque Sabatier : " + fmt(r.moved) + " ℝ versés au porte-monnaie !");
+    } else if (!silent && rounded) {
+      renderWallet(true);
+      toast("Arrondi de fin de journée : " + fmt2(rounded) + " ℝ envoyés à la banque.");
     } else if (!silent && r.earned) {
       toast("Banque Sabatier : +" + fmt2(r.earned) + " ℝ d'intérêts.");
     }
   }
 
   // ---------- Démarrage ----------
-  buildList(POSITIVES, $("list-pos"));
-  buildList(NEGATIVES, $("list-neg"));
   // Lien de connexion : eraph.vercel.app/#sync=CODE (le code est retiré de l'adresse aussitôt).
   function syncLink() {
     var m = /^#sync=(.+)$/.exec(location.hash);
@@ -1571,6 +1819,9 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   phoneQuery.addEventListener("change", function () { if (!$("page-calendrier").hidden) renderCalendar(); });
   $("validate").addEventListener("click", validate);
   $("round").addEventListener("click", roundWallet);
+  $("new-action").addEventListener("submit", addAction);
+  $("new-action").addEventListener("input", renderFormula);
+  $("new-action").addEventListener("change", renderFormula);
   $("cal-prev").addEventListener("click", function () { calYear--; renderCalendar(); });
   $("cal-next").addEventListener("click", function () { calYear++; renderCalendar(); });
   $("fx").addEventListener("click", closeFx);

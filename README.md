@@ -6,7 +6,8 @@ Ouvrir `index.html` dans un navigateur, ou le servir avec n'importe quel héberg
 - **Actions** : cocher les actions du jour, le total s'affiche en bas à droite, puis « Valider ».
 - **Shop** : dépenser ses ℝ (une ligne par objet, triée par prix croissant).
 - **Calendrier** : un rond par jour (plein = validé), un tiret pour les jours inexistants.
-- **Banque Sabatier** : reçoit les arrondis du porte-monnaie, 1 % d'intérêts par jour,
+- **Paramètres** : Banque Sabatier et liste d'actions (création : difficulté + impact × 0,1 ; suppression avec double confirmation).
+- **Banque Sabatier** : reçoit les arrondis du porte-monnaie (automatiquement en fin de journée), 1 % d'intérêts par jour,
   reverse 20 ℝ au porte-monnaie dès qu'elle les dépasse, et absorbe d'abord les journées négatives.
 - Les montants sont au centime, arrondis au centime inférieur.
 - Dodo : minuit le premier jour, puis une minute plus tôt chaque jour, jusqu'à 22h30.
