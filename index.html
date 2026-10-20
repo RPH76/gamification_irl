@@ -299,7 +299,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 .done-note { font-size: 1.15rem; font-weight: 650; }
 
 /* ---------- Shop ---------- */
-.shop-list { display: grid; gap: 14px; margin-top: 34px; max-width: 820px; }
+.shop-list { display: grid; gap: 14px; margin-top: 28px; max-width: 820px; }
 .item {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr) auto;
@@ -330,11 +330,49 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   padding: 0.3em 0.7em; border-radius: 999px;
 }
 .item .pill { font-size: 1.25rem; }
+.shop-head { display: flex; justify-content: flex-start; margin-top: 30px; }
+.new-item { margin-top: 24px; }
+.form-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.file-input { font: inherit; font-size: 1rem; max-width: 100%; }
+.ni-preview { width: 96px; height: 96px; object-fit: cover; border-radius: 14px; }
+.item-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.item-wrap > .item:only-child { grid-column: 1 / -1; }
+.del.spacer { visibility: hidden; }
+.item-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
+.letter {
+  width: 100%; height: 100%;
+  display: grid; place-items: center;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--sand);
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 2.6rem;
+}
+.shop-ledger { margin-top: 44px; max-width: 820px; }
 @media (max-width: 480px) {
   .item { grid-template-columns: 64px minmax(0, 1fr); gap: 10px 14px; padding-right: 14px; }
   .item-img { width: 64px; }
   .item .pill { grid-column: 2; justify-self: start; }
 }
+
+/* ---------- Correction d'un jour ---------- */
+.edit-banner {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 24px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--ink);
+  color: var(--sand);
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+.edit-banner strong { font-weight: 800; }
+.edit-banner .del { border-color: var(--sand); color: var(--sand); }
+.edit-banner .del:hover { background: rgba(202, 183, 135, 0.18); }
+.done-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.done-actions .btn { font-size: 1rem; padding: 0.55em 1.2em; }
 
 /* ---------- Calendrier ---------- */
 .cal-head {
@@ -378,6 +416,11 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   border: 2px solid var(--ink);
 }
 .dot.full { background: var(--ink); }
+button.dot { padding: 0; background: transparent; cursor: pointer; transition: transform 0.12s; }
+button.dot.full { background: var(--ink); }
+button.dot:hover { transform: scale(1.25); }
+button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.cal-hint { margin: 6px 0 0; font-size: 0.98rem; opacity: 0.8; }
 .dot.future { opacity: 0.35; }
 .dot.today { box-shadow: 0 0 0 3px var(--sand), 0 0 0 5px var(--ink); }
 .dash { display: block; width: var(--dot); height: 2px; background: var(--ink); opacity: 0.6; }
@@ -653,6 +696,10 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 
   <!-- Page Actions -->
   <main id="page-actions">
+    <div class="edit-banner" id="edit-banner" hidden>
+      <span>Correction du <strong id="edit-date"></strong></span>
+      <button class="del" type="button" id="back-today">Revenir à aujourd'hui</button>
+    </div>
     <div class="board">
       <section aria-labelledby="h-pos">
         <h2 class="col-head" id="h-pos">Positives</h2>
@@ -669,13 +716,49 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
         </div>
         <button class="btn" id="validate" type="button" disabled>Valider</button>
         <p class="done-note" id="done-note" hidden></p>
+        <div class="done-actions" id="done-actions" hidden>
+          <button class="btn ghost" type="button" id="day-edit">Modifier</button>
+          <button class="btn ghost" type="button" id="day-reset">Remettre à zéro</button>
+        </div>
       </div>
     </div>
   </main>
 
   <!-- Page Shop -->
   <main id="page-shop" hidden>
+    <div class="shop-head">
+      <button class="btn" type="button" id="new-item-btn">Nouveau item</button>
+    </div>
+    <form class="new-action new-item" id="new-item" novalidate hidden>
+      <h3 class="new-title">Nouveau item</h3>
+      <div class="field">
+        <label for="ni-name">Nom</label>
+        <input class="field-input" id="ni-name" type="text" maxlength="40" autocomplete="off" placeholder="Ex. : Corde à sauter">
+      </div>
+      <div class="field">
+        <label for="ni-sub">Détail (facultatif)</label>
+        <input class="field-input" id="ni-sub" type="text" maxlength="40" autocomplete="off" placeholder="Ex. : Noire, 3 m">
+      </div>
+      <div class="field">
+        <label for="ni-price">Prix en ℝ</label>
+        <input class="field-input" id="ni-price" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex. : 12,50">
+      </div>
+      <div class="field">
+        <label for="ni-photo">Photo (facultative)</label>
+        <input class="file-input" id="ni-photo" type="file" accept="image/*">
+        <img class="ni-preview" id="ni-preview" alt="" hidden>
+      </div>
+      <p class="form-error" id="ni-error" hidden></p>
+      <div class="form-actions">
+        <button class="btn" type="submit">Ajouter au shop</button>
+        <button class="btn ghost" type="button" id="ni-cancel">Annuler</button>
+      </div>
+    </form>
     <div class="shop-list" id="shop-list"></div>
+    <section class="ledger shop-ledger" aria-labelledby="h-shoplog">
+      <h3 id="h-shoplog">Relevé du shop</h3>
+      <ol id="shop-log"></ol>
+    </section>
   </main>
 
   <!-- Page Calendrier -->
@@ -693,6 +776,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       </div>
     </div>
     <p class="cal-count" id="cal-count"></p>
+    <p class="cal-hint">Touche un jour passé pour le valider, le corriger ou le remettre à zéro.</p>
     <div class="cal-wrap"><div class="cal" id="cal"></div></div>
   </main>
 
@@ -951,6 +1035,14 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     if (!Array.isArray(s.custom)) s.custom = [];   // actions créées dans Paramètres
     if (!Array.isArray(s.hidden)) s.hidden = [];   // actions d'origine supprimées de la liste
     if (!s.lastSeen) s.lastSeen = keyOf(new Date());
+    if (!Array.isArray(s.items)) s.items = [];     // items créés dans le shop
+    if (!Array.isArray(s.shopLog)) {
+      // Relevé du shop : on reprend les achats déjà faits, du plus récent au plus ancien.
+      s.shopLog = s.purchases.slice().reverse().map(function (p) {
+        var it = SHOP.filter(function (x) { return x.id === p.id; })[0];
+        return { date: p.date, type: "buy", name: it ? it.name + " " + it.sub : p.id, price: p.price };
+      });
+    }
     return s;
   }
   function persistLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
@@ -1174,8 +1266,8 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     return Math.round(MINECRAFT_START * (monthDays - day) / (monthDays - 1));
   }
   function minecraftSeries() {
-    var day = streakBefore("minecraft", state.day.date) + 1;
-    return { day: day, monthDays: monthLength(addDays(state.day.date, 1 - day)) };
+    var day = streakBefore("minecraft", cur().date) + 1;
+    return { day: day, monthDays: monthLength(addDays(cur().date, 1 - day)) };
   }
   function minecraftValue(n) {
     var s = minecraftSeries();
@@ -1188,17 +1280,17 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   }
   // Heure du dodo : minuit le premier jour, puis une minute de moins chaque jour, jusqu'à 22h30.
   function dodoTime() {
-    var k = Math.max(0, daysBetween(state.dodoStart, state.day.date));
+    var k = Math.max(0, daysBetween(state.dodoStart, cur().date));
     var m = Math.max(DODO_LAST, DODO_FIRST - k);
     if (m === DODO_FIRST) return "minuit";
     return Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0");
   }
   function noMasturbationValue() {
-    var day = streakBefore("no-masturbation", state.day.date) + 1;
+    var day = streakBefore("no-masturbation", cur().date) + 1;
     return NO_MAST_STEPS[Math.min(day, NO_MAST_STEPS.length) - 1];
   }
   function noMasturbationNote() {
-    var day = streakBefore("no-masturbation", state.day.date) + 1;
+    var day = streakBefore("no-masturbation", cur().date) + 1;
     return "Jour " + day + " d'affilée · 6 → 7,50 → 9 ℝ max";
   }
   function actionValue(a, n) {
@@ -1241,6 +1333,65 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     $("list-neg").innerHTML = "";
     buildList(actionList(1), $("list-pos"));
     buildList(actionList(-1), $("list-neg"));
+  }
+
+  // ---------- Jour affiché : aujourd'hui, ou un jour choisi dans le calendrier pour le corriger ----------
+  var editDay = null;
+  function cur() { return editDay || state.day; }
+  function copy(o) { return JSON.parse(JSON.stringify(o || {})); }
+  function longDate(key) {
+    return dateOf(key).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  }
+  function openDay(key) {
+    if (key > todayKey()) return;
+    if (key === todayKey()) editDay = null;
+    else {
+      var rec = state.days[key];
+      editDay = { date: key, checks: copy(rec && rec.checks), qty: copy(rec && rec.qty), validated: !!rec, total: rec ? rec.total : 0 };
+    }
+    if (location.hash === "#actions") route(); else location.hash = "#actions";
+    renderActions();
+    window.scrollTo(0, 0);
+  }
+  function backToToday() {
+    editDay = null;
+    renderActions();
+  }
+  // Annule l'effet d'une journée validée sur le porte-monnaie et la banque.
+  function undoDay(key) {
+    var rec = state.days[key];
+    if (!rec) return 0;
+    state.balance -= rec.wallet;
+    if (rec.bank) {
+      state.bank.balance -= rec.bank;
+      bankLog("Annulation du " + shortDate(key), -rec.bank);
+    }
+    delete state.days[key];
+    return rec.total;
+  }
+  // Modifier : la journée redevient modifiable avec ses cases ; Remettre à zéro : cases vidées aussi.
+  function reopenDay(clear) {
+    var day = cur();
+    undoDay(day.date);
+    day.validated = false;
+    day.total = 0;
+    if (clear) { day.checks = {}; day.qty = {}; }
+    save();
+    renderAll();
+    renderWallet(true);
+  }
+  function askReopen(clear) {
+    var day = cur(), rec = state.days[day.date];
+    if (!rec) return;
+    var when = editDay ? "du " + longDate(day.date) : "d'aujourd'hui";
+    var effect = "Son total (" + signed(rec.total) + " ℝ) est annulé sur le porte-monnaie" + (rec.bank ? " et la banque" : "") + ".";
+    if (clear) {
+      openModal("Remettre à zéro la journée " + when + " ?", effect + " Toutes les cases sont décochées.",
+        { label: "Remettre à zéro", run: function () { reopenDay(true); toast("Journée remise à zéro."); } });
+    } else {
+      openModal("Modifier la journée " + when + " ?", effect + " Les cases restent cochées : corrige-les puis valide à nouveau.",
+        { label: "Modifier", run: function () { reopenDay(false); toast("Journée rouverte : corrige puis valide."); } });
+    }
   }
 
   // ---------- Page Actions ----------
@@ -1303,8 +1454,8 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       rows[a.id] = row;
 
       input.addEventListener("change", function () {
-        state.day.checks[a.id] = input.checked;
-        if (input.checked && a.qty && !state.day.qty[a.id]) state.day.qty[a.id] = 1;
+        cur().checks[a.id] = input.checked;
+        if (input.checked && a.qty && !cur().qty[a.id]) cur().qty[a.id] = 1;
         save();
         renderActions();
         if (input.checked && row.range) row.range.focus({ preventScroll: true });
@@ -1312,10 +1463,10 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       container.appendChild(wrap);
     });
   }
-  function qtyOf(a) { return Math.max(1, Math.min(a.qty.max, state.day.qty[a.id] || 1)); }
+  function qtyOf(a) { return Math.max(1, Math.min(a.qty.max, cur().qty[a.id] || 1)); }
   function setQty(a, n) {
-    if (state.day.validated) return;
-    state.day.qty[a.id] = Math.max(1, Math.min(a.qty.max, n));
+    if (cur().validated) return;
+    cur().qty[a.id] = Math.max(1, Math.min(a.qty.max, n));
     save();
     renderActions();
   }
@@ -1323,18 +1474,18 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     var t = 0;
     Object.keys(rows).forEach(function (id) {
       var a = rows[id].a;
-      if (state.day.checks[id]) t += actionValue(a, a.qty ? qtyOf(a) : 1);
+      if (cur().checks[id]) t += actionValue(a, a.qty ? qtyOf(a) : 1);
     });
     return t;
   }
   function anyChecked() {
-    return Object.keys(rows).some(function (id) { return state.day.checks[id]; });
+    return Object.keys(rows).some(function (id) { return cur().checks[id]; });
   }
   function renderActions() {
     ensureLists();
-    var locked = state.day.validated;
+    var day = cur(), locked = day.validated;
     Object.keys(rows).forEach(function (id) {
-      var row = rows[id], a = row.a, on = !!state.day.checks[id];
+      var row = rows[id], a = row.a, on = !!day.checks[id];
       row.input.checked = on;
       row.input.disabled = locked;
       row.title.textContent = typeof a.label === "function" ? a.label() : a.label;
@@ -1352,7 +1503,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
         row.val.innerHTML = rHtml(signed(actionValue(a, 1)));
       }
     });
-    var total = locked ? state.day.total : computeTotal();
+    var total = locked ? day.total : computeTotal();
     var tv = $("total");
     tv.innerHTML = rHtml(signed(total));
     tv.classList.toggle("idle", !locked && !anyChecked());
@@ -1360,11 +1511,15 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     $("validate").disabled = !anyChecked();
     var note = $("done-note");
     note.hidden = !locked;
-    if (locked) note.textContent = "Journée validée. Rendez-vous demain !";
+    $("done-actions").hidden = !locked;
+    if (locked) note.textContent = editDay ? "Journée du " + longDate(day.date) + " validée." : "Journée validée. Rendez-vous demain !";
+    $("edit-banner").hidden = !editDay;
+    if (editDay) $("edit-date").textContent = longDate(editDay.date);
   }
 
   function validate() {
-    if (state.day.validated || !anyChecked()) return;
+    var day = cur();
+    if (day.validated || !anyChecked()) return;
     var total = computeTotal();
     var fromBank = 0;
     // Une journée négative est d'abord prélevée sur la banque, le reste sur le porte-monnaie.
@@ -1372,15 +1527,15 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
       fromBank = Math.min(state.bank.balance, -total);
       if (fromBank > 0) {
         state.bank.balance -= fromBank;
-        bankLog("Journée négative du " + shortDate(state.day.date), -fromBank);
+        bankLog("Journée négative du " + shortDate(day.date), -fromBank);
       }
     }
     var walletDelta = total + fromBank;
     state.balance += walletDelta;
-    state.day.validated = true;
-    state.day.total = total;
-    state.days[state.day.date] = {
-      total: total, checks: state.day.checks, qty: state.day.qty,
+    day.validated = true;
+    day.total = total;
+    state.days[day.date] = {
+      total: total, checks: day.checks, qty: day.qty,
       wallet: walletDelta, bank: -fromBank
     };
     save();
@@ -1580,11 +1735,19 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
         } else {
           var key = calYear + "-" + String(m + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
           var rec = state.days[key];
-          node = el("span", "dot" + (rec ? " full" : "") + (key > today ? " future" : "") + (key === today ? " today" : ""));
+          var past = key <= today;
+          node = el(past ? "button" : "span", "dot" + (rec ? " full" : "") + (past ? " pick" : " future") + (key === today ? " today" : ""));
           var label = day + " " + MONTHS[m].replace(".", "") + " : " + (rec ? "validé (" + signed(rec.total) + " ℝ)" : "non validé");
+          node.dataset.date = key;
+          if (past) {
+            node.type = "button";
+            label += " · toucher pour corriger";
+            node.addEventListener("click", openDay.bind(null, key));
+          } else {
+            node.setAttribute("role", "img");
+          }
           node.title = label;
           node.setAttribute("aria-label", label);
-          node.setAttribute("role", "img");
           if (rec) count++;
         }
         if (phone) place(node, day + 1, m + 2); else place(node, m + 2, day + 1);
@@ -1666,40 +1829,182 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   function ownedCount(id) {
     return state.purchases.filter(function (p) { return p.id === id; }).length;
   }
+  // Items d'origine + items créés, toujours triés par prix croissant.
+  function shopItems() {
+    return SHOP.concat(state.items.map(function (it) {
+      return { id: it.id, name: it.name, sub: it.sub, price: it.price, custom: true, art: function () { return customArt(it); } };
+    })).sort(function (a, b) { return a.price - b.price; });
+  }
+  function customArt(it) {
+    if (it.img) return '<img src="' + it.img + '" alt="">';
+    return '<span class="letter">' + escapeHtml(it.name.charAt(0).toUpperCase()) + "</span>";
+  }
+  function escapeHtml(t) {
+    return String(t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
+  }
+  function itemTitle(it) { return it.name + (it.sub ? " " + it.sub : ""); }
+  function shopLog(type, it) {
+    state.shopLog.unshift({ date: todayKey(), type: type, name: itemTitle(it), price: it.price });
+    if (state.shopLog.length > 200) state.shopLog.length = 200;
+  }
+  function renderShopLog() {
+    var ol = $("shop-log");
+    ol.innerHTML = "";
+    if (!state.shopLog.length) {
+      ol.appendChild(el("li", "empty", "<span></span><span>Aucun achat ni nouvel item pour l'instant.</span><span></span>"));
+    }
+    var labels = { create: "Nouvel item : ", buy: "Achat : ", "delete": "Item retiré : " };
+    state.shopLog.slice(0, 30).forEach(function (op) {
+      var li = el("li");
+      li.appendChild(el("span", null, shortDate(op.date)));
+      var t = el("span");
+      t.textContent = labels[op.type] + op.name;
+      li.appendChild(t);
+      li.appendChild(el("span", null, op.type === "buy" ? rHtml(MINUS + fmt2(op.price)) : rHtml(fmt2(op.price))));
+      ol.appendChild(li);
+    });
+  }
   function buildShop() {
     var list = $("shop-list");
     list.innerHTML = "";
-    SHOP.slice().sort(function (a, b) { return a.price - b.price; }).forEach(function (it) {
+    renderShopLog();
+    shopItems().forEach(function (it) {
+      var wrap = el("div", "item-wrap");
       var b = el("button", "item");
       b.type = "button";
       b.id = "shop-" + it.id;
       b.appendChild(el("span", "item-img", it.art()));
       var text = el("span", "item-text");
-      text.appendChild(el("span", "item-name", it.name + "<small>" + it.sub + "</small>"));
+      var name = el("span", "item-name");
+      name.textContent = it.name;
+      if (it.sub) { var sub = el("small"); sub.textContent = it.sub; name.appendChild(sub); }
+      text.appendChild(name);
       var n = ownedCount(it.id);
       if (n) text.appendChild(el("span", "owned", n > 1 ? "Acheté ×" + n : "Acheté"));
       b.appendChild(text);
       b.appendChild(el("span", "pill", rHtml(fmt(it.price))));
       b.addEventListener("click", function () { askBuy(it); });
-      list.appendChild(b);
+      wrap.appendChild(b);
+      if (it.custom) {
+        var del = el("button", "del", "Supprimer");
+        del.type = "button";
+        del.setAttribute("aria-label", "Supprimer " + itemTitle(it) + " du shop");
+        del.addEventListener("click", function () { askDeleteItem(it); });
+        wrap.appendChild(del);
+      } else if (state.items.length) {
+        // Même largeur pour toutes les lignes quand certaines ont un bouton Supprimer.
+        var spacer = el("span", "del spacer", "Supprimer");
+        spacer.setAttribute("aria-hidden", "true");
+        wrap.appendChild(spacer);
+      }
+      list.appendChild(wrap);
     });
+  }
+  function askDeleteItem(it) {
+    openModal("You shoure ‘bout dat ?", "Retirer « " + itemTitle(it) + " » du shop ?",
+      { label: "Oui", run: function () {
+        openModal("Really shoure ?", "« " + itemTitle(it) + " » va disparaître du shop. Les achats passés restent dans le relevé.",
+          { label: "Retirer", run: function () {
+            state.items = state.items.filter(function (x) { return x.id !== it.id; });
+            shopLog("delete", it);
+            save();
+            renderAll();
+            toast("Item retiré du shop.");
+          } });
+      } });
+  }
+
+  // ---------- Nouveau item ----------
+  var newItemImg = null;
+  function toggleNewItem(open) {
+    $("new-item").hidden = !open;
+    $("new-item-btn").hidden = open;
+    if (open) {
+      $("new-item").reset();
+      newItemImg = null;
+      $("ni-preview").hidden = true;
+      $("ni-error").hidden = true;
+      $("ni-name").focus();
+    }
+  }
+  // Prix saisi « 12,5 » ou « 12.50 » → centimes.
+  function parsePrice(text) {
+    var m = /^(\d{1,5})(?:[.,](\d{1,2}))?$/.exec(String(text).trim());
+    if (!m) return 0;
+    return +m[1] * 100 + (m[2] ? +(m[2] + "0").slice(0, 2) : 0);
+  }
+  // Photo réduite à 160 px (JPEG) pour rester légère dans la synchronisation.
+  function readPhoto(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function () {
+        var img = new Image();
+        img.onerror = reject;
+        img.onload = function () {
+          var k = Math.min(1, 160 / Math.max(img.width, img.height));
+          var c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(img.width * k));
+          c.height = Math.max(1, Math.round(img.height * k));
+          var g = c.getContext("2d");
+          g.fillStyle = "rgb(215, 199, 158)";
+          g.fillRect(0, 0, c.width, c.height);
+          g.drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL("image/jpeg", 0.72));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function onPhoto() {
+    var f = $("ni-photo").files[0];
+    newItemImg = null;
+    $("ni-preview").hidden = true;
+    if (!f) return;
+    readPhoto(f).then(function (url) {
+      newItemImg = url;
+      $("ni-preview").src = url;
+      $("ni-preview").hidden = false;
+    }, function () {
+      $("ni-error").textContent = "Cette image ne peut pas être lue. Essaie une photo JPEG ou PNG.";
+      $("ni-error").hidden = false;
+    });
+  }
+  function addItem(e) {
+    e.preventDefault();
+    var err = $("ni-error");
+    var name = $("ni-name").value.trim().replace(/\s+/g, " ");
+    var sub = $("ni-sub").value.trim().replace(/\s+/g, " ");
+    var price = parsePrice($("ni-price").value);
+    err.hidden = true;
+    if (!name) { err.textContent = "Donne un nom à l'item."; err.hidden = false; $("ni-name").focus(); return; }
+    if (!price) { err.textContent = "Indique un prix en ℝ, par exemple 12 ou 12,50."; err.hidden = false; $("ni-price").focus(); return; }
+    var it = { id: "i-" + Date.now().toString(36), name: name, sub: sub, price: price, img: newItemImg };
+    state.items.push(it);
+    shopLog("create", it);
+    save();
+    toggleNewItem(false);
+    renderAll();
+    toast("Nouvel item : " + itemTitle(it) + " (" + fmt(price) + " ℝ)");
   }
   function askBuy(it) {
     var missing = it.price - state.balance;
     if (missing > 0) {
-      openModal(it.name + " · " + it.sub,
+      openModal(itemTitle(it),
         "Prix : " + fmt(it.price) + " ℝ. Il te manque " + fmt(missing) + " ℝ.", null);
       return;
     }
-    openModal("Acheter " + it.name + " " + it.sub + " ?",
+    openModal("Acheter " + itemTitle(it) + " ?",
       "Prix : " + fmt(it.price) + " ℝ. Solde après achat : " + fmt(state.balance - it.price) + " ℝ.",
       { label: "Acheter", run: function () {
         state.balance -= it.price;
         state.purchases.push({ id: it.id, date: todayKey(), price: it.price });
+        shopLog("buy", it);
         save();
         renderWallet(true);
         renderAll();
-        toast("Acheté : " + it.name + " " + it.sub + " !");
+        toast("Acheté : " + itemTitle(it) + " !");
       } });
   }
 
@@ -1777,6 +2082,7 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
     var changed = seen || rounded || r.earned || r.moved;
     if (state.day.date !== todayKey()) {
       state.day = freshDay();
+      editDay = null;
       calYear = dateOf(todayKey()).getFullYear();
       changed = true;
     }
@@ -1819,6 +2125,13 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   phoneQuery.addEventListener("change", function () { if (!$("page-calendrier").hidden) renderCalendar(); });
   $("validate").addEventListener("click", validate);
   $("round").addEventListener("click", roundWallet);
+  $("back-today").addEventListener("click", backToToday);
+  $("day-edit").addEventListener("click", function () { askReopen(false); });
+  $("day-reset").addEventListener("click", function () { askReopen(true); });
+  $("new-item-btn").addEventListener("click", function () { toggleNewItem(true); });
+  $("ni-cancel").addEventListener("click", function () { toggleNewItem(false); });
+  $("ni-photo").addEventListener("change", onPhoto);
+  $("new-item").addEventListener("submit", addItem);
   $("new-action").addEventListener("submit", addAction);
   $("new-action").addEventListener("input", renderFormula);
   $("new-action").addEventListener("change", renderFormula);
