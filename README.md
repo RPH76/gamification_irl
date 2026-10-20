@@ -4,8 +4,10 @@ Site statique (un seul fichier `index.html`, aucune dépendance), en ligne sur h
 Ouvrir `index.html` dans un navigateur, ou le servir avec n'importe quel hébergeur statique.
 
 - **Actions** : cocher les actions du jour, le total s'affiche en bas à droite, puis « Valider ».
-- **Shop** : dépenser ses ℝ (une ligne par objet, triée par prix croissant), créer de nouveaux items
-  (« Nouveau item », photo facultative) et suivre le relevé des créations et achats.
+- **Shop** : dépenser ses ℝ (une ligne par objet, triée par prix croissant), créer ou modifier des items
+  (« Nouveau item » : lien du produit pour récupérer sa photo, ou photo envoyée) et suivre le relevé
+  des créations et achats. `api/preview.js` va chercher l'image de la page (og:image, JSON-LD…),
+  refuse le SVG et les adresses internes, et n'accepte que les appareils connectés.
 - **Calendrier** : un rond par jour (plein = validé), un tiret pour les jours inexistants.
   Toucher un jour passé permet de le valider, le corriger ou le remettre à zéro.
 - **Paramètres** : Banque Sabatier et liste d'actions (création : difficulté + impact × 0,1 ; suppression avec double confirmation).

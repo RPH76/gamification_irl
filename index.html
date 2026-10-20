@@ -333,22 +333,18 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 .shop-head { display: flex; justify-content: flex-start; margin-top: 30px; }
 .new-item { margin-top: 24px; }
 .form-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.file-input { font: inherit; font-size: 1rem; max-width: 100%; }
-.ni-preview { width: 96px; height: 96px; object-fit: cover; border-radius: 14px; }
+.file-input { font: inherit; font-size: 1rem; width: 100%; min-width: 0; }
+.ni-preview { width: 96px; height: 96px; object-fit: contain; border-radius: 14px; background: #ffffff; }
 .item-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
-.item-wrap > .item:only-child { grid-column: 1 / -1; }
-.del.spacer { visibility: hidden; }
-.item-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
-.letter {
-  width: 100%; height: 100%;
-  display: grid; place-items: center;
-  border-radius: 14px;
-  background: var(--ink);
-  color: var(--sand);
-  font-family: var(--f-display);
-  font-weight: 800;
-  font-size: 2.6rem;
-}
+
+.item-img img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; background: #ffffff; }
+.item-img.empty { border: 2.5px dashed var(--ink-faint); border-radius: 14px; }
+.item-tools { display: grid; gap: 8px; }
+.shop-empty { margin: 0; font-size: 1.1rem; opacity: 0.8; }
+.url-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.url-row .btn { font-size: 1rem; padding: 0.6em 1.1em; }
+.field-hint { margin: 0; font-size: 0.98rem; font-weight: 600; min-height: 1.2em; }
+@media (max-width: 480px) { .url-row { grid-template-columns: minmax(0, 1fr); } .url-row .btn { justify-self: start; } }
 .shop-ledger { margin-top: 44px; max-width: 820px; }
 @media (max-width: 480px) {
   .item { grid-template-columns: 64px minmax(0, 1fr); gap: 10px 14px; padding-right: 14px; }
@@ -507,6 +503,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
 .new-action {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   max-width: 560px;
   padding: 24px;
@@ -730,7 +727,15 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
       <button class="btn" type="button" id="new-item-btn">Nouveau item</button>
     </div>
     <form class="new-action new-item" id="new-item" novalidate hidden>
-      <h3 class="new-title">Nouveau item</h3>
+      <h3 class="new-title" id="ni-title">Nouveau item</h3>
+      <div class="field">
+        <label for="ni-url">Lien du produit (facultatif)</label>
+        <div class="url-row">
+          <input class="field-input" id="ni-url" type="url" inputmode="url" autocomplete="off" placeholder="https://…">
+          <button class="btn ghost" type="button" id="ni-fetch">Récupérer l'image</button>
+        </div>
+        <p class="field-hint" id="ni-url-status" aria-live="polite"></p>
+      </div>
       <div class="field">
         <label for="ni-name">Nom</label>
         <input class="field-input" id="ni-name" type="text" maxlength="40" autocomplete="off" placeholder="Ex. : Corde à sauter">
@@ -750,7 +755,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
       </div>
       <p class="form-error" id="ni-error" hidden></p>
       <div class="form-actions">
-        <button class="btn" type="submit">Ajouter au shop</button>
+        <button class="btn" type="submit" id="ni-submit">Ajouter au shop</button>
         <button class="btn ghost" type="button" id="ni-cancel">Annuler</button>
       </div>
     </form>
@@ -953,7 +958,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   ];
   // Prix en centimes. La liste est toujours affichée par prix croissant.
   var SHOP = [
-    { id: "venum-ice", name: "Gants de boxe VENUM", sub: "Bleu Ice", price: 3200, art: glovesSvg }
+    { id: "venum-ice", name: "Gants de boxe VENUM", sub: "Bleu Ice", price: 3200 }
   ];
 
   var MINECRAFT_START = 200;           // 2 ℝ par session le 1er jour de la série
@@ -1035,7 +1040,16 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     if (!Array.isArray(s.custom)) s.custom = [];   // actions créées dans Paramètres
     if (!Array.isArray(s.hidden)) s.hidden = [];   // actions d'origine supprimées de la liste
     if (!s.lastSeen) s.lastSeen = keyOf(new Date());
-    if (!Array.isArray(s.items)) s.items = [];     // items créés dans le shop
+    if (!Array.isArray(s.items)) s.items = [];     // items du shop (modifiables)
+    if (!s.shopSeeded) {
+      // Les items d'origine deviennent des items comme les autres (sans image dessinée).
+      SHOP.slice().reverse().forEach(function (it) {
+        if (!s.items.some(function (x) { return x.id === it.id; })) {
+          s.items.unshift({ id: it.id, name: it.name, sub: it.sub, price: it.price, img: null });
+        }
+      });
+      s.shopSeeded = true;
+    }
     if (!Array.isArray(s.shopLog)) {
       // Relevé du shop : on reprend les achats déjà faits, du plus récent au plus ancien.
       s.shopLog = s.purchases.slice().reverse().map(function (p) {
@@ -1357,17 +1371,36 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     editDay = null;
     renderActions();
   }
+  // Où reprendre l'argent d'une journée validée qu'on annule.
+  // Gain : ses centimes ont pu partir à la banque (arrondi manuel ou de fin de journée) ; on reprend donc
+  // les centimes d'abord sur ceux qui restent au porte-monnaie, puis sur la banque, et le reste au porte-monnaie.
+  // Perte : on rend à la banque ce qui lui a été pris, et le reste au porte-monnaie.
+  function planUndo(rec) {
+    if (rec.total <= 0) return { wallet: -rec.wallet, bank: -rec.bank };
+    var cents = rec.total % 100;
+    var inWallet = state.balance > 0 ? Math.min(cents, walletFraction()) : 0;
+    var inBank = Math.min(state.bank.balance, cents - inWallet);
+    return { wallet: -(rec.total - inBank), bank: -inBank };
+  }
+  function describeUndo(plan) {
+    var parts = [];
+    if (plan.wallet) parts.push(signed(plan.wallet) + " ℝ sur le porte-monnaie");
+    if (plan.bank) parts.push(signed(plan.bank) + " ℝ sur la banque");
+    return parts.join(" et ");
+  }
   // Annule l'effet d'une journée validée sur le porte-monnaie et la banque.
   function undoDay(key) {
     var rec = state.days[key];
-    if (!rec) return 0;
-    state.balance -= rec.wallet;
-    if (rec.bank) {
-      state.bank.balance -= rec.bank;
-      bankLog("Annulation du " + shortDate(key), -rec.bank);
+    if (!rec) return null;
+    var plan = planUndo(rec);
+    state.balance += plan.wallet;
+    if (plan.bank) {
+      state.bank.balance += plan.bank;
+      bankLog("Annulation du " + shortDate(key), plan.bank);
     }
     delete state.days[key];
-    return rec.total;
+    sweep(); // une perte annulée peut faire repasser la banque au-dessus de 20 ℝ
+    return plan;
   }
   // Modifier : la journée redevient modifiable avec ses cases ; Remettre à zéro : cases vidées aussi.
   function reopenDay(clear) {
@@ -1384,7 +1417,9 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     var day = cur(), rec = state.days[day.date];
     if (!rec) return;
     var when = editDay ? "du " + longDate(day.date) : "d'aujourd'hui";
-    var effect = "Son total (" + signed(rec.total) + " ℝ) est annulé sur le porte-monnaie" + (rec.bank ? " et la banque" : "") + ".";
+    var plan = planUndo(rec);
+    var effect = "Son total (" + signed(rec.total) + " ℝ) est annulé : " + describeUndo(plan) +
+      ". Porte-monnaie après : " + fmt(state.balance + plan.wallet) + " ℝ.";
     if (clear) {
       openModal("Remettre à zéro la journée " + when + " ?", effect + " Toutes les cases sont décochées.",
         { label: "Remettre à zéro", run: function () { reopenDay(true); toast("Journée remise à zéro."); } });
@@ -1581,15 +1616,17 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   }
   // Fin de journée : les centimes gagnés du porte-monnaie partent tout seuls à la banque.
   function endOfDayRound(dayKey) {
-    var frac = walletFraction();
-    if (state.balance <= 0 || !frac) return 0;
+    var frac = gainedCents();
+    if (!frac) return 0;
     state.balance -= frac;
     state.bank.balance += frac;
     state.bank.log.unshift({ date: dayKey, label: "Arrondi de fin de journée", amount: frac });
     return frac;
   }
+  // Centimes gagnés du porte-monnaie (aucun quand il est à zéro ou négatif).
+  function gainedCents() { return state.balance > 0 ? walletFraction() : 0; }
   function roundWallet() {
-    var frac = walletFraction();
+    var frac = gainedCents();
     if (!frac) return;
     state.balance -= frac;
     state.bank.balance += frac;
@@ -1602,11 +1639,13 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   }
   function renderBank() {
     $("bank-balance").innerHTML = rHtml(fmt2(state.bank.balance));
-    var frac = walletFraction();
+    var frac = gainedCents();
     $("round").disabled = !frac;
     $("round-hint").textContent = frac
       ? "Envoie " + fmt2(frac) + " ℝ du porte-monnaie (" + fmt(state.balance) + " ℝ) à la banque."
-      : "Rien à arrondir : le porte-monnaie est à " + fmt(state.balance) + " ℝ tout rond.";
+      : state.balance < 0
+        ? "Rien à arrondir : le porte-monnaie est négatif (" + fmt(state.balance) + " ℝ)."
+        : "Rien à arrondir : le porte-monnaie est à " + fmt(state.balance) + " ℝ tout rond.";
     var ol = $("ledger");
     ol.innerHTML = "";
     if (!state.bank.log.length) {
@@ -1811,33 +1850,12 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   }
 
   // ---------- Shop ----------
-  function glovesSvg() {
-    return '<svg viewBox="0 0 200 200" aria-hidden="true">' +
-      '<defs><g id="glove">' +
-      '<rect x="38" y="122" width="64" height="44" rx="10" fill="#7fb8d6"/>' +
-      '<rect x="38" y="132" width="64" height="7" fill="#ffffff"/>' +
-      '<path d="M36 126 C22 92 22 44 56 28 C86 14 118 30 118 66 C118 96 110 116 104 126 Z" fill="#c4e6f5"/>' +
-      '<path d="M36 92 C18 86 16 112 34 118 C44 121 52 114 50 106 Z" fill="#a6d4ea"/>' +
-      '<path d="M54 44 C62 34 80 30 92 36" stroke="#ffffff" stroke-width="7" stroke-linecap="round" fill="none" opacity=".7"/>' +
-      '<path d="M48 70 C64 66 94 66 112 72" stroke="#8cc3dd" stroke-width="3" fill="none"/>' +
-      '</g></defs>' +
-      '<use href="#glove" transform="translate(190 14) scale(-1 1) rotate(-8 70 100)"/>' +
-      '<g transform="translate(10 6) rotate(-8 70 100)"><use href="#glove"/>' +
-      '<text x="70" y="157" text-anchor="middle" font-family="Syne, Arial Black, sans-serif" font-weight="800" font-size="12" fill="#1f3f5c">VENUM</text></g>' +
-      '</svg>';
-  }
   function ownedCount(id) {
     return state.purchases.filter(function (p) { return p.id === id; }).length;
   }
-  // Items d'origine + items créés, toujours triés par prix croissant.
+  // Items du shop, toujours triés par prix croissant.
   function shopItems() {
-    return SHOP.concat(state.items.map(function (it) {
-      return { id: it.id, name: it.name, sub: it.sub, price: it.price, custom: true, art: function () { return customArt(it); } };
-    })).sort(function (a, b) { return a.price - b.price; });
-  }
-  function customArt(it) {
-    if (it.img) return '<img src="' + it.img + '" alt="">';
-    return '<span class="letter">' + escapeHtml(it.name.charAt(0).toUpperCase()) + "</span>";
+    return state.items.slice().sort(function (a, b) { return a.price - b.price; });
   }
   function escapeHtml(t) {
     return String(t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
@@ -1868,12 +1886,14 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     var list = $("shop-list");
     list.innerHTML = "";
     renderShopLog();
+    if (!state.items.length) list.appendChild(el("p", "shop-empty", "Le shop est vide. Ajoute un item avec « Nouveau item »."));
     shopItems().forEach(function (it) {
       var wrap = el("div", "item-wrap");
       var b = el("button", "item");
       b.type = "button";
       b.id = "shop-" + it.id;
-      b.appendChild(el("span", "item-img", it.art()));
+      // Pas d'image dessinée : la photo de l'item, ou un cadre vide.
+      b.appendChild(el("span", "item-img" + (it.img ? "" : " empty"), it.img ? '<img src="' + escapeHtml(it.img) + '" alt="">' : ""));
       var text = el("span", "item-text");
       var name = el("span", "item-name");
       name.textContent = it.name;
@@ -1885,18 +1905,18 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
       b.appendChild(el("span", "pill", rHtml(fmt(it.price))));
       b.addEventListener("click", function () { askBuy(it); });
       wrap.appendChild(b);
-      if (it.custom) {
-        var del = el("button", "del", "Supprimer");
-        del.type = "button";
-        del.setAttribute("aria-label", "Supprimer " + itemTitle(it) + " du shop");
-        del.addEventListener("click", function () { askDeleteItem(it); });
-        wrap.appendChild(del);
-      } else if (state.items.length) {
-        // Même largeur pour toutes les lignes quand certaines ont un bouton Supprimer.
-        var spacer = el("span", "del spacer", "Supprimer");
-        spacer.setAttribute("aria-hidden", "true");
-        wrap.appendChild(spacer);
-      }
+      var tools = el("div", "item-tools");
+      var edit = el("button", "del", "Modifier");
+      edit.type = "button";
+      edit.setAttribute("aria-label", "Modifier " + itemTitle(it));
+      edit.addEventListener("click", function () { openItemForm(it); });
+      var del = el("button", "del", "Supprimer");
+      del.type = "button";
+      del.setAttribute("aria-label", "Supprimer " + itemTitle(it) + " du shop");
+      del.addEventListener("click", function () { askDeleteItem(it); });
+      tools.appendChild(edit);
+      tools.appendChild(del);
+      wrap.appendChild(tools);
       list.appendChild(wrap);
     });
   }
@@ -1914,18 +1934,36 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
       } });
   }
 
-  // ---------- Nouveau item ----------
-  var newItemImg = null;
-  function toggleNewItem(open) {
-    $("new-item").hidden = !open;
-    $("new-item-btn").hidden = open;
-    if (open) {
-      $("new-item").reset();
-      newItemImg = null;
-      $("ni-preview").hidden = true;
-      $("ni-error").hidden = true;
-      $("ni-name").focus();
+  // ---------- Nouveau item / modifier un item ----------
+  var formImg = null, editingItem = null;
+  function centsText(c) { return Math.floor(c / 100) + (c % 100 ? "," + cents(c) : ""); }
+  function openItemForm(item) {
+    editingItem = item || null;
+    $("new-item").reset();
+    $("new-item").hidden = false;
+    $("new-item-btn").hidden = true;
+    $("ni-title").textContent = item ? "Modifier l'item" : "Nouveau item";
+    $("ni-submit").textContent = item ? "Enregistrer" : "Ajouter au shop";
+    $("ni-error").hidden = true;
+    $("ni-url-status").textContent = "";
+    formImg = item ? item.img : null;
+    if (item) {
+      $("ni-name").value = item.name;
+      $("ni-sub").value = item.sub || "";
+      $("ni-price").value = centsText(item.price);
     }
+    showPreview();
+    $("new-item").scrollIntoView({ block: "nearest" });
+    $("ni-name").focus({ preventScroll: true });
+  }
+  function closeItemForm() {
+    editingItem = null;
+    $("new-item").hidden = true;
+    $("new-item-btn").hidden = false;
+  }
+  function showPreview() {
+    $("ni-preview").hidden = !formImg;
+    if (formImg) $("ni-preview").src = formImg;
   }
   // Prix saisi « 12,5 » ou « 12.50 » → centimes.
   function parsePrice(text) {
@@ -1933,60 +1971,99 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     if (!m) return 0;
     return +m[1] * 100 + (m[2] ? +(m[2] + "0").slice(0, 2) : 0);
   }
-  // Photo réduite à 160 px (JPEG) pour rester légère dans la synchronisation.
+  // Image réduite à 200 px (JPEG) pour rester légère dans la synchronisation.
+  function shrinkImage(src) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onerror = reject;
+      img.onload = function () {
+        var k = Math.min(1, 200 / Math.max(img.width, img.height));
+        var c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.width * k));
+        c.height = Math.max(1, Math.round(img.height * k));
+        var g = c.getContext("2d");
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", 0.78));
+      };
+      img.src = src;
+    });
+  }
   function readPhoto(file) {
     return new Promise(function (resolve, reject) {
       var reader = new FileReader();
       reader.onerror = reject;
-      reader.onload = function () {
-        var img = new Image();
-        img.onerror = reject;
-        img.onload = function () {
-          var k = Math.min(1, 160 / Math.max(img.width, img.height));
-          var c = document.createElement("canvas");
-          c.width = Math.max(1, Math.round(img.width * k));
-          c.height = Math.max(1, Math.round(img.height * k));
-          var g = c.getContext("2d");
-          g.fillStyle = "rgb(215, 199, 158)";
-          g.fillRect(0, 0, c.width, c.height);
-          g.drawImage(img, 0, 0, c.width, c.height);
-          resolve(c.toDataURL("image/jpeg", 0.72));
-        };
-        img.src = reader.result;
-      };
+      reader.onload = function () { shrinkImage(reader.result).then(resolve, reject); };
       reader.readAsDataURL(file);
     });
   }
+  function formError(msg, field) {
+    $("ni-error").textContent = msg;
+    $("ni-error").hidden = !msg;
+    if (field) $(field).focus();
+  }
   function onPhoto() {
     var f = $("ni-photo").files[0];
-    newItemImg = null;
-    $("ni-preview").hidden = true;
     if (!f) return;
+    formError("");
     readPhoto(f).then(function (url) {
-      newItemImg = url;
-      $("ni-preview").src = url;
-      $("ni-preview").hidden = false;
+      formImg = url;
+      showPreview();
     }, function () {
-      $("ni-error").textContent = "Cette image ne peut pas être lue. Essaie une photo JPEG ou PNG.";
-      $("ni-error").hidden = false;
+      formError("Cette image ne peut pas être lue. Essaie une photo JPEG ou PNG.");
     });
   }
-  function addItem(e) {
+  // Lien produit : le serveur trouve l'image de la page (ou prend l'image si c'est un lien direct).
+  var lastFetched = "";
+  function fetchFromUrl() {
+    var url = $("ni-url").value.trim(), status = $("ni-url-status");
+    if (!url || url === lastFetched) return;
+    if (!/^https?:\/\//i.test(url)) { status.textContent = "Le lien doit commencer par http:// ou https://."; return; }
+    if (!sync.code) { status.textContent = "Connecte d'abord cet appareil (« Non synchronisé · connecter ») pour utiliser les liens."; return; }
+    lastFetched = url;
+    status.textContent = "Recherche de l'image…";
+    $("ni-fetch").disabled = true;
+    fetch("/api/preview?url=" + encodeURIComponent(url), { headers: { "X-Sync-Code": sync.code }, cache: "no-store" })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (r) {
+        if (!r.ok || !r.data.image) throw new Error(r.data.error || "Ce lien est injoignable.");
+        return shrinkImage(r.data.image).then(function (small) {
+          formImg = small;
+          showPreview();
+          if (!$("ni-name").value.trim() && r.data.title) $("ni-name").value = r.data.title.slice(0, 40);
+          status.textContent = "Image trouvée.";
+        });
+      })
+      .catch(function (e) {
+        lastFetched = "";
+        status.textContent = e && e.message && !/Failed to fetch|NetworkError|Load failed/i.test(e.message) ? e.message : "Pas de connexion internet.";
+      })
+      .then(function () { $("ni-fetch").disabled = false; });
+  }
+  function submitItem(e) {
     e.preventDefault();
-    var err = $("ni-error");
     var name = $("ni-name").value.trim().replace(/\s+/g, " ");
     var sub = $("ni-sub").value.trim().replace(/\s+/g, " ");
     var price = parsePrice($("ni-price").value);
-    err.hidden = true;
-    if (!name) { err.textContent = "Donne un nom à l'item."; err.hidden = false; $("ni-name").focus(); return; }
-    if (!price) { err.textContent = "Indique un prix en ℝ, par exemple 12 ou 12,50."; err.hidden = false; $("ni-price").focus(); return; }
-    var it = { id: "i-" + Date.now().toString(36), name: name, sub: sub, price: price, img: newItemImg };
-    state.items.push(it);
-    shopLog("create", it);
+    formError("");
+    if (!name) return formError("Donne un nom à l'item.", "ni-name");
+    if (!price) return formError("Indique un prix en ℝ, par exemple 12 ou 12,50.", "ni-price");
+    var it;
+    if (editingItem) {
+      it = state.items.filter(function (x) { return x.id === editingItem.id; })[0];
+      if (!it) { closeItemForm(); return; }
+      it.name = name; it.sub = sub; it.price = price; it.img = formImg;
+    } else {
+      it = { id: "i-" + Date.now().toString(36), name: name, sub: sub, price: price, img: formImg };
+      state.items.push(it);
+      shopLog("create", it);
+    }
+    var edited = !!editingItem;
     save();
-    toggleNewItem(false);
+    closeItemForm();
     renderAll();
-    toast("Nouvel item : " + itemTitle(it) + " (" + fmt(price) + " ℝ)");
+    toast(edited ? "Item enregistré." : "Nouvel item : " + itemTitle(it) + " (" + fmt(price) + " ℝ)");
   }
   function askBuy(it) {
     var missing = it.price - state.balance;
@@ -2128,10 +2205,13 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   $("back-today").addEventListener("click", backToToday);
   $("day-edit").addEventListener("click", function () { askReopen(false); });
   $("day-reset").addEventListener("click", function () { askReopen(true); });
-  $("new-item-btn").addEventListener("click", function () { toggleNewItem(true); });
-  $("ni-cancel").addEventListener("click", function () { toggleNewItem(false); });
+  $("new-item-btn").addEventListener("click", function () { openItemForm(null); });
+  $("ni-cancel").addEventListener("click", closeItemForm);
   $("ni-photo").addEventListener("change", onPhoto);
-  $("new-item").addEventListener("submit", addItem);
+  $("ni-fetch").addEventListener("click", function () { lastFetched = ""; fetchFromUrl(); });
+  $("ni-url").addEventListener("change", fetchFromUrl);
+  $("ni-url").addEventListener("paste", function () { setTimeout(fetchFromUrl, 0); });
+  $("new-item").addEventListener("submit", submitItem);
   $("new-action").addEventListener("submit", addAction);
   $("new-action").addEventListener("input", renderFormula);
   $("new-action").addEventListener("change", renderFormula);
