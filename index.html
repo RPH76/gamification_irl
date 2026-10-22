@@ -313,6 +313,16 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
   padding: 12px 22px 12px 12px;
   cursor: pointer;
   transition: background 0.18s, transform 0.18s;
+  position: relative;
+}
+.coef {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
 }
 .item:hover { background: var(--sand-deep); transform: translateY(-2px); }
 .item:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
@@ -745,8 +755,9 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
         <input class="field-input" id="ni-sub" type="text" maxlength="40" autocomplete="off" placeholder="Ex. : Noire, 3 m">
       </div>
       <div class="field">
-        <label for="ni-price">Prix en ℝ</label>
-        <input class="field-input" id="ni-price" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex. : 12,50">
+        <label for="ni-price">Prix en €</label>
+        <input class="field-input" id="ni-price" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex. : 49,90">
+        <p class="field-hint" id="ni-calc" aria-live="polite"></p>
       </div>
       <div class="field">
         <label for="ni-photo">Photo (facultative)</label>
@@ -1903,6 +1914,11 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
       if (n) text.appendChild(el("span", "owned", n > 1 ? "Acheté ×" + n : "Acheté"));
       b.appendChild(text);
       b.appendChild(el("span", "pill", rHtml(fmt(it.price))));
+      if (it.coef) {
+        var coef = el("span", "coef", "×" + coefText(it.coef));
+        coef.title = it.eur + " € × " + coefText(it.coef);
+        b.appendChild(coef);
+      }
       b.addEventListener("click", function () { askBuy(it); });
       wrap.appendChild(b);
       var tools = el("div", "item-tools");
@@ -1936,7 +1952,6 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
   // ---------- Nouveau item / modifier un item ----------
   var formImg = null, editingItem = null;
-  function centsText(c) { return Math.floor(c / 100) + (c % 100 ? "," + cents(c) : ""); }
   function openItemForm(item) {
     editingItem = item || null;
     $("new-item").reset();
@@ -1950,8 +1965,9 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     if (item) {
       $("ni-name").value = item.name;
       $("ni-sub").value = item.sub || "";
-      $("ni-price").value = centsText(item.price);
+      $("ni-price").value = item.eur ? String(item.eur) : "";
     }
+    renderCalc();
     showPreview();
     $("new-item").scrollIntoView({ block: "nearest" });
     $("ni-name").focus({ preventScroll: true });
@@ -1964,6 +1980,39 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   function showPreview() {
     $("ni-preview").hidden = !formImg;
     if (formImg) $("ni-preview").src = formImg;
+  }
+  // ---------- Coefficient tarifaire ----------
+  // t = min(1, max(0, (p − 1) / 99)) ;  C(p) = 1 + 1,3 (1 − 3t² + 2t³) ;  P = p × C(p).
+  // C descend de 2,3 (p ≤ 1 €) à 1 (p ≥ 100 €), sans palier : sa pente −7,8·t(1 − t)/99 par euro est nulle
+  // aux deux bouts, donc pas de rupture de pente à 100 €, et la pente est la plus forte vers 50,50 €.
+  // Calcul en fractions exactes (BigInt) : t = n/d avec n = centimes − 100 et d = 9 900 ; seul P est arrondi,
+  // au centime inférieur, à la toute fin (en flottants, 2,3 × 1 € donnerait 2,29 €).
+  function tariff(priceCents) {
+    var pc = BigInt(priceCents), d = 9900n;
+    var n = pc - 100n;
+    if (n < 0n) n = 0n;
+    if (n > d) n = d;
+    var d3 = d * d * d;
+    var num = 10n * d3 + 13n * (d3 - 3n * n * n * d + 2n * n * n * n); // C = num / den
+    var den = 10n * d3;
+    return { cents: Number(pc * num / den), coef: Number(num) / Number(den) };
+  }
+  // Prix en euros saisi (« 49,90 ») → euros entiers, arrondis à l'euro supérieur.
+  function parseEuros(text) {
+    var c = parsePrice(text);
+    return c ? Math.ceil(c / 100) : 0;
+  }
+  function coefText(c) { return String(+c.toFixed(4)).replace(".", ","); }
+  function renderCalc() {
+    var eur = parseEuros($("ni-price").value), out = $("ni-calc");
+    if (!eur) {
+      out.textContent = editingItem && !editingItem.eur
+        ? "Prix actuel : " + fmt(editingItem.price) + " ℝ (laisse vide pour le garder)."
+        : "Le prix est arrondi à l'euro supérieur, puis multiplié par le coefficient.";
+      return;
+    }
+    var t = tariff(eur * 100);
+    out.textContent = eur + " € × " + coefText(t.coef) + " = " + fmt2(t.cents) + " ℝ";
   }
   // Prix saisi « 12,5 » ou « 12.50 » → centimes.
   function parsePrice(text) {
@@ -2045,17 +2094,23 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     e.preventDefault();
     var name = $("ni-name").value.trim().replace(/\s+/g, " ");
     var sub = $("ni-sub").value.trim().replace(/\s+/g, " ");
-    var price = parsePrice($("ni-price").value);
+    var priceText = $("ni-price").value.trim();
+    var eur = parseEuros(priceText);
     formError("");
     if (!name) return formError("Donne un nom à l'item.", "ni-name");
-    if (!price) return formError("Indique un prix en ℝ, par exemple 12 ou 12,50.", "ni-price");
+    // En modification, un item sans prix en euros (ancien item) garde son prix si le champ reste vide.
+    var keep = editingItem && !editingItem.eur && !priceText;
+    if (!eur && !keep) return formError("Indique un prix en euros, par exemple 49 ou 49,90.", "ni-price");
+    var t = eur ? tariff(eur * 100) : null;
+    var price = t ? t.cents : editingItem.price;
     var it;
     if (editingItem) {
       it = state.items.filter(function (x) { return x.id === editingItem.id; })[0];
       if (!it) { closeItemForm(); return; }
-      it.name = name; it.sub = sub; it.price = price; it.img = formImg;
+      it.name = name; it.sub = sub; it.img = formImg;
+      if (t) { it.eur = eur; it.coef = t.coef; it.price = price; }
     } else {
-      it = { id: "i-" + Date.now().toString(36), name: name, sub: sub, price: price, img: formImg };
+      it = { id: "i-" + Date.now().toString(36), name: name, sub: sub, eur: eur, coef: t.coef, price: price, img: formImg };
       state.items.push(it);
       shopLog("create", it);
     }
@@ -2207,6 +2262,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   $("day-reset").addEventListener("click", function () { askReopen(true); });
   $("new-item-btn").addEventListener("click", function () { openItemForm(null); });
   $("ni-cancel").addEventListener("click", closeItemForm);
+  $("ni-price").addEventListener("input", renderCalc);
   $("ni-photo").addEventListener("change", onPhoto);
   $("ni-fetch").addEventListener("click", function () { lastFetched = ""; fetchFromUrl(); });
   $("ni-url").addEventListener("change", fetchFromUrl);
