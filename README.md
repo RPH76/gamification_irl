@@ -4,6 +4,11 @@ Site statique (un seul fichier `index.html`, aucune dépendance), en ligne sur h
 Ouvrir `index.html` dans un navigateur, ou le servir avec n'importe quel hébergeur statique.
 
 - **Actions** : cocher les actions du jour, le total s'affiche en bas à droite, puis « Valider ».
+- **Menu** : le titre de la page ouvre un menu déroulant (Actions, Tâches, Calendrier, Shop, Paramètres).
+- **Tâches** : liste du jour (valeur = difficulté + impact × 0,1). Le soir, « Valider les tâches » paie
+  les tâches cochées ; les autres passent en procrastinées. Le lendemain, un rappel offre une seconde
+  chance (VALIDÉE / PROCRASTINE). Une tâche procrastinée (rouge, « J+n ») coûte 10 % de sa valeur
+  le 1er jour de retard puis 15 % de plus par jour, jusqu'à 100 %. Une tâche faite disparaît le lendemain.
 - **Shop** : dépenser ses ℝ (une ligne par objet, triée par prix croissant), créer ou modifier des items
   (« Nouveau item » : lien du produit pour récupérer sa photo, ou photo envoyée) et suivre le relevé
   des créations et achats.

@@ -21,6 +21,7 @@
   --white: #ffffff;
   --gain: #3ad46f;
   --loss: #ff4a3d;
+  --late: #e3221b;
 
   --f-display: "Syne", "Arial Black", "Helvetica Neue", sans-serif;
   --f-body: "Bricolage Grotesque", "Trebuchet MS", "Segoe UI", sans-serif;
@@ -49,30 +50,88 @@ button { font: inherit; color: inherit; }
 
 /* ---------- En-tête ---------- */
 .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.tabs { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px 22px; min-width: 0; }
-.tab {
+.menu { position: relative; min-width: 0; }
+.menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
   font-family: var(--f-display);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--ink);
-  text-decoration: none;
-  font-size: 1.05rem;
-  opacity: 0.55;
   line-height: 1;
+  font-size: clamp(0.9rem, calc((100vw - 150px) / 13), 3.6rem);
 }
-.tab:hover { opacity: 0.85; }
-.tab[aria-current="page"] {
-  /* Le titre actif occupe sa ligne ; les autres onglets passent en dessous. */
-  flex-basis: 100%;
-  font-size: clamp(0.9rem, calc((100vw - 120px) / 12.5), 3.6rem);
-  overflow-wrap: anywhere;
-  opacity: 1;
+.menu-title {
   text-decoration: underline;
   text-decoration-thickness: 0.085em;
   text-underline-offset: 0.16em;
+  overflow-wrap: anywhere;
 }
-.tab:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
+/* Chevron dessiné en CSS : il pivote quand le menu est ouvert. */
+.chev {
+  width: 0.38em; height: 0.38em;
+  margin-left: 0.12em;
+  border-right: 0.11em solid currentColor;
+  border-bottom: 0.11em solid currentColor;
+  transform: translateY(-0.12em) rotate(45deg);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.menu-btn[aria-expanded="true"] .chev { transform: translateY(0.08em) rotate(-135deg); }
+.menu-btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; border-radius: 6px; }
+.menu-list {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  z-index: 35;
+  display: grid;
+  gap: 8px;
+  min-width: 250px;
+  padding: 10px;
+  border: 2.5px solid var(--ink);
+  border-radius: 24px;
+  background: var(--sand);
+  box-shadow: 0 14px 34px rgba(60, 42, 18, 0.28);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0.62em 1.15em;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--sand-light);
+  color: var(--ink);
+  text-decoration: none;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.menu-item:hover { background: var(--sand-deep); }
+.menu-item:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.menu-item[aria-current="page"] { background: var(--ink); color: var(--sand); }
+.menu-badge {
+  min-width: 1.6em;
+  padding: 0.15em 0.45em;
+  border-radius: 999px;
+  background: var(--late);
+  color: #000000;
+  border: 2px solid #000000;
+  font-family: var(--f-body);
+  font-size: 0.8rem;
+  text-align: center;
+  letter-spacing: 0;
+}
 
 .pill {
   display: inline-flex;
@@ -379,6 +438,74 @@ input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offse
 .edit-banner .del:hover { background: rgba(202, 183, 135, 0.18); }
 .done-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .done-actions .btn { font-size: 1rem; padding: 0.55em 1.2em; }
+
+/* ---------- Tâches ---------- */
+.tasks { display: grid; gap: 40px; margin-top: 30px; max-width: 760px; }
+.tasks-empty { margin: 6px 0 0; font-size: 1.1rem; opacity: 0.8; }
+.tasks-foot { padding-top: 18px; }
+.task-row .label s { text-decoration-thickness: 0.1em; }
+.task-del {
+  margin-left: 50px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.task-del:hover { opacity: 1; }
+.task-del:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.done-tag { font-size: 0.85rem; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+/* Tâches procrastinées : bien rouges, contour noir. */
+.late {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 3px solid #000000;
+  border-radius: 18px;
+  background: var(--late);
+  color: #000000;
+}
+.late .jplus {
+  padding: 0.25em 0.6em;
+  border-radius: 999px;
+  background: #000000;
+  color: var(--late);
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+.late .lname { font-size: clamp(1.25rem, 2.6vw, 1.6rem); font-weight: 750; line-height: 1.15; overflow-wrap: anywhere; }
+.late .lname small { display: block; margin-top: 3px; font-size: 0.92rem; font-weight: 600; }
+.late .lval { font-weight: 800; font-size: 1.15rem; white-space: nowrap; }
+.late .btn { grid-column: 1 / -1; justify-self: start; background: #000000; color: var(--late); font-size: 1rem; padding: 0.55em 1.2em; }
+.second-chance {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  background: var(--sand-light);
+}
+.sc-title { margin: 0; font-family: var(--f-display); font-size: clamp(1.25rem, 3.4vw, 1.8rem); line-height: 1.15; text-wrap: balance; }
+.sc-text { margin: 0; font-size: 1.05rem; }
+.sc-grid { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px 14px; }
+.sc-head { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; text-align: center; }
+.sc-name { font-size: 1.2rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.sc-name small { display: block; font-size: 0.92rem; font-weight: 600; opacity: 0.8; }
+.sc-pick { position: relative; display: grid; place-items: center; cursor: pointer; }
+.sc-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sc-pick input:checked + .box { background: var(--ink); }
+.sc-pick input:checked + .box svg { opacity: 1; transform: scale(1); }
+.sc-pick.no input:checked + .box { background: var(--late); border-color: #000000; }
+.sc-pick input:focus-visible + .box { outline: 3px solid var(--ink); outline-offset: 3px; }
 
 /* ---------- Calendrier ---------- */
 .cal-head {
@@ -689,11 +816,17 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 <body>
 <div class="wrap">
   <header class="top">
-    <nav class="tabs" aria-label="Pages">
-      <a class="tab" id="tab-actions" href="#actions">Actions</a>
-      <a class="tab" id="tab-shop" href="#shop">Shop</a>
-      <a class="tab" id="tab-calendrier" href="#calendrier">Calendrier</a>
-      <a class="tab" id="tab-parametres" href="#parametres">Paramètres</a>
+    <nav class="menu" id="menu" aria-label="Pages">
+      <button class="menu-btn" type="button" id="menu-btn" aria-haspopup="true" aria-expanded="false" aria-controls="menu-list">
+        <span class="menu-title" id="menu-title">Actions</span><span class="chev" aria-hidden="true"></span>
+      </button>
+      <div class="menu-list" id="menu-list" hidden>
+        <a class="menu-item" id="tab-actions" href="#actions">Actions</a>
+        <a class="menu-item" id="tab-taches" href="#taches">Tâches<span class="menu-badge" id="tasks-badge" hidden></span></a>
+        <a class="menu-item" id="tab-calendrier" href="#calendrier">Calendrier</a>
+        <a class="menu-item" id="tab-shop" href="#shop">Shop</a>
+        <a class="menu-item" id="tab-parametres" href="#parametres">Paramètres</a>
+      </div>
     </nav>
     <div class="pill wallet-pill" id="wallet" title="Porte-monnaie €RAPH" aria-live="polite">
       <span id="wallet-amount">0</span><span class="r" aria-label="€RAPH">ℝ</span>
@@ -775,6 +908,66 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
       <h3 id="h-shoplog">Relevé du shop</h3>
       <ol id="shop-log"></ol>
     </section>
+  </main>
+
+  <!-- Page Tâches -->
+  <main id="page-taches" hidden>
+    <div class="tasks">
+      <section class="second-chance" id="second-chance" aria-labelledby="h-sc" hidden>
+        <h2 class="sc-title" id="h-sc">Hé, il semble que tu as oublié de valider les tâches de la veille !</h2>
+        <p class="sc-text">Seconde chance : pour chaque tâche, coche <strong>VALIDÉE</strong> si tu l'as faite, ou <strong>PROCRASTINE</strong> sinon (−10 % de sa valeur tout de suite, puis 15 % de plus chaque jour jusqu'à 100 %).</p>
+        <div class="sc-grid" id="sc-grid"></div>
+        <button class="btn" type="button" id="sc-confirm" disabled>Confirmer</button>
+      </section>
+
+      <section class="late-list" id="late-section" aria-labelledby="h-late" hidden>
+        <h2 class="col-head" id="h-late">Procrastinées</h2>
+        <div id="late-list"></div>
+      </section>
+
+      <section aria-labelledby="h-today-tasks">
+        <h2 class="col-head" id="h-today-tasks">Tâches du jour</h2>
+        <div id="task-list"></div>
+        <p class="tasks-empty" id="tasks-empty">Aucune tâche aujourd'hui. Ajoute ta première tâche ci-dessous.</p>
+        <div class="foot tasks-foot" id="tasks-foot" hidden>
+          <div class="total">
+            <span class="total-label">Total</span>
+            <span class="total-value" id="tasks-total">0 <span class="r">ℝ</span></span>
+          </div>
+          <button class="btn" type="button" id="tasks-validate">Valider les tâches</button>
+        </div>
+      </section>
+
+      <form class="new-action" id="new-task" novalidate>
+        <h3 class="new-title">Nouvelle tâche</h3>
+        <div class="field">
+          <label for="nt-name">Tâche</label>
+          <input class="field-input" id="nt-name" type="text" maxlength="50" autocomplete="off" placeholder="Ex. : Appeler la banque">
+        </div>
+        <div class="field">
+          <label for="nt-diff">Difficulté (1 à 5)</label>
+          <div class="slider-row">
+            <input id="nt-diff" type="range" min="1" max="5" step="1" value="3">
+            <output id="nt-diff-out" for="nt-diff">3</output>
+          </div>
+        </div>
+        <div class="field">
+          <label for="nt-impact">Impact (1 à 5)</label>
+          <div class="slider-row">
+            <input id="nt-impact" type="range" min="1" max="5" step="1" value="3">
+            <output id="nt-impact-out" for="nt-impact">3</output>
+          </div>
+        </div>
+        <p class="formula" id="nt-formula"></p>
+        <p class="form-error" id="nt-error" hidden></p>
+        <div><button class="btn" type="submit">Ajouter la tâche</button></div>
+      </form>
+
+      <section class="ledger" aria-labelledby="h-tasklog">
+        <h3 id="h-tasklog">Relevé des tâches</h3>
+        <ol id="task-log"></ol>
+      </section>
+    </div>
   </main>
 
   <!-- Page Calendrier -->
@@ -1051,6 +1244,8 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     if (!Array.isArray(s.custom)) s.custom = [];   // actions créées dans Paramètres
     if (!Array.isArray(s.hidden)) s.hidden = [];   // actions d'origine supprimées de la liste
     if (!s.lastSeen) s.lastSeen = keyOf(new Date());
+    if (!Array.isArray(s.tasks)) s.tasks = [];     // tâches : à faire, faites, procrastinées
+    if (!Array.isArray(s.taskLog)) s.taskLog = [];
     if (!Array.isArray(s.items)) s.items = [];     // items du shop (modifiables)
     if (!s.shopSeeded) {
       // Les items d'origine deviennent des items comme les autres (sans image dessinée).
@@ -1752,6 +1947,282 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     toast("Action ajoutée : " + f.label + " (" + signed(customValue(f)) + " ℝ)");
   }
 
+  // ---------- Tâches ----------
+  // Une tâche vaut difficulté + impact × 0,1 (en ℝ). Statuts :
+  //   todo : à faire le jour `day` ; done : faite (disparaît le lendemain) ; late : procrastinée.
+  // Procrastinée : −10 % de sa valeur le 1er jour de retard, puis 15 % de plus par jour, jusqu'à 100 %.
+  function taskValue(t) { return t.difficulty * 100 + t.impact * 10; }
+  function latePct(t) {
+    var k = daysBetween(t.day, todayKey());
+    return k < 1 ? 0 : Math.min(100, 10 + 15 * (k - 1));
+  }
+  function taskLog(type, t, amount) {
+    state.taskLog.unshift({ date: todayKey(), type: type, label: t.label, amount: amount });
+    if (state.taskLog.length > 200) state.taskLog.length = 200;
+  }
+  function todaysTasks() {
+    var today = todayKey();
+    return state.tasks.filter(function (t) { return t.day === today && t.status !== "late"; });
+  }
+  function lateTasks() { return state.tasks.filter(function (t) { return t.status === "late"; }); }
+  // Tâches d'hier jamais validées : elles ont droit à une seconde chance.
+  function pendingTasks() {
+    var today = todayKey();
+    return state.tasks.filter(function (t) { return t.status === "todo" && t.day < today; });
+  }
+  // Prélève ce qui est dû sur le porte-monnaie (rattrapage si l'app n'a pas été ouverte).
+  function chargeLate(t) {
+    var due = Math.floor(taskValue(t) * latePct(t) / 100);
+    var charge = due - (t.paid || 0);
+    if (charge <= 0) return 0;
+    state.balance -= charge;
+    t.paid = due;
+    taskLog("penalty", t, -charge);
+    return charge;
+  }
+  // À chaque nouvelle journée : les tâches faites disparaissent, les tâches sans réponse depuis plus d'un jour
+  // passent en procrastinées, et les pénalités du jour sont prélevées.
+  function processTasks() {
+    var today = todayKey(), yesterday = addDays(today, -1), changed = false, charged = 0;
+    var before = state.tasks.length;
+    state.tasks = state.tasks.filter(function (t) { return !(t.status === "done" && t.doneDate < today); });
+    if (state.tasks.length !== before) changed = true;
+    state.tasks.forEach(function (t) {
+      if (t.status === "todo" && t.day < yesterday) {
+        t.status = "late";
+        delete t.checked; delete t.choice;
+        taskLog("late", t, 0);
+        changed = true;
+      }
+      if (t.status === "late") charged += chargeLate(t);
+    });
+    return { changed: changed || charged > 0, charged: charged };
+  }
+  function finishTask(t) {
+    t.status = "done";
+    t.doneDate = todayKey();
+    delete t.checked; delete t.choice;
+    state.balance += taskValue(t);
+    taskLog("done", t, taskValue(t));
+    return taskValue(t);
+  }
+
+  function taskRow(t, locked) {
+    var wrap = el("div", "action task-row");
+    var label = el("label", "row");
+    label.setAttribute("for", "t-" + t.id);
+    var input = el("input");
+    input.type = "checkbox";
+    input.id = "t-" + t.id;
+    input.checked = t.status === "done" || !!t.checked;
+    input.disabled = locked;
+    label.appendChild(input);
+    label.appendChild(el("span", "box", CHECK));
+    var text = el("span", "label");
+    var name = el(t.status === "done" ? "s" : "span");
+    name.textContent = t.label;
+    text.appendChild(name);
+    text.appendChild(el("small", null, t.status === "done" ? '<span class="done-tag">Faite ✓</span>' : "Difficulté " + t.difficulty + " · Impact " + t.impact));
+    label.appendChild(text);
+    label.appendChild(el("span", "val", rHtml(signed(taskValue(t)))));
+    wrap.appendChild(label);
+    if (!locked) {
+      input.addEventListener("change", function () {
+        t.checked = input.checked;
+        save();
+        renderTasks();
+      });
+      var del = el("button", "task-del", "Supprimer");
+      del.type = "button";
+      del.setAttribute("aria-label", "Supprimer la tâche " + t.label);
+      del.addEventListener("click", function () { askDeleteTask(t); });
+      wrap.appendChild(del);
+    }
+    return wrap;
+  }
+  function renderTasks() {
+    // Seconde chance pour les tâches d'hier
+    var pending = pendingTasks(), grid = $("sc-grid");
+    $("second-chance").hidden = !pending.length;
+    grid.innerHTML = "";
+    if (pending.length) {
+      grid.appendChild(el("span", "sc-head", "Validée"));
+      grid.appendChild(el("span"));
+      grid.appendChild(el("span", "sc-head", "Procrastine"));
+      pending.forEach(function (t) {
+        [["done", "yes"], [null, null], ["late", "no"]].forEach(function (c) {
+          if (!c[0]) {
+            var n = el("span", "sc-name");
+            n.textContent = t.label;
+            n.appendChild(el("small", null, rHtml(signed(taskValue(t)))));
+            grid.appendChild(n);
+            return;
+          }
+          var lab = el("label", "sc-pick " + c[1]);
+          var box = el("input");
+          box.type = "checkbox";
+          box.id = "sc-" + c[0] + "-" + t.id;
+          box.checked = t.choice === c[0];
+          box.setAttribute("aria-label", (c[0] === "done" ? "Validée : " : "Procrastine : ") + t.label);
+          box.addEventListener("change", function () {
+            t.choice = box.checked ? c[0] : null;
+            save();
+            renderTasks();
+          });
+          lab.appendChild(box);
+          lab.appendChild(el("span", "box", CHECK));
+          grid.appendChild(lab);
+        });
+      });
+      $("sc-confirm").disabled = !pending.every(function (t) { return t.choice; });
+    }
+
+    // Tâches procrastinées
+    var late = lateTasks(), ll = $("late-list");
+    $("late-section").hidden = !late.length;
+    ll.innerHTML = "";
+    late.forEach(function (t) {
+      var row = el("div", "late");
+      row.appendChild(el("span", "jplus", "J+" + daysBetween(t.day, todayKey())));
+      var n = el("span", "lname");
+      n.textContent = t.label;
+      var pct = latePct(t);
+      n.appendChild(el("small", null, pct
+        ? "−" + pct + " % de sa valeur (" + MINUS + fmt2(t.paid || 0) + " ℝ)" + (pct >= 100 ? " · plafond atteint" : " · +15 % demain")
+        : "−10 % demain, puis 15 % de plus par jour"));
+      row.appendChild(n);
+      row.appendChild(el("span", "lval", rHtml(signed(taskValue(t)))));
+      var b = el("button", "btn", "Je l'ai faite !");
+      b.type = "button";
+      b.addEventListener("click", function () { askFinishLate(t); });
+      row.appendChild(b);
+      ll.appendChild(row);
+    });
+
+    // Tâches du jour
+    var list = $("task-list"), today = todaysTasks();
+    list.innerHTML = "";
+    today.forEach(function (t) { list.appendChild(taskRow(t, t.status === "done")); });
+    $("tasks-empty").hidden = today.length > 0;
+    var open = today.filter(function (t) { return t.status === "todo"; });
+    $("tasks-foot").hidden = !open.length;
+    var sum = open.reduce(function (a, t) { return a + (t.checked ? taskValue(t) : 0); }, 0);
+    $("tasks-total").innerHTML = rHtml(signed(sum));
+
+    var badge = pending.length + late.length;
+    $("tasks-badge").hidden = !badge;
+    $("tasks-badge").textContent = badge;
+    renderTaskFormula();
+    renderTaskLog();
+  }
+  function renderTaskLog() {
+    var ol = $("task-log");
+    ol.innerHTML = "";
+    if (!state.taskLog.length) ol.appendChild(el("li", "empty", "<span></span><span>Aucune tâche validée pour l'instant.</span><span></span>"));
+    var labels = { done: "Faite : ", late: "Procrastinée : ", penalty: "Retard : " };
+    state.taskLog.slice(0, 30).forEach(function (op) {
+      var li = el("li");
+      li.appendChild(el("span", null, shortDate(op.date)));
+      var t = el("span");
+      t.textContent = labels[op.type] + op.label;
+      li.appendChild(t);
+      li.appendChild(el("span", null, op.amount ? rHtml(signed(op.amount)) : "—"));
+      ol.appendChild(li);
+    });
+  }
+  // Soir : les tâches cochées rapportent leur valeur, les autres passent en procrastinées.
+  function askValidateTasks() {
+    var open = todaysTasks().filter(function (t) { return t.status === "todo"; });
+    if (!open.length) return;
+    var done = open.filter(function (t) { return t.checked; }), left = open.length - done.length;
+    var gain = done.reduce(function (a, t) { return a + taskValue(t); }, 0);
+    var text = done.length + (done.length > 1 ? " tâches faites : " : " tâche faite : ") + signed(gain) + " ℝ.";
+    if (left) text += " " + left + (left > 1 ? " tâches non cochées passent" : " tâche non cochée passe") +
+      " en procrastinée (−10 % de sa valeur demain, puis 15 % de plus par jour jusqu'à 100 %).";
+    openModal("Valider les tâches du jour ?", text, { label: "Valider", run: function () {
+      var total = 0;
+      open.forEach(function (t) {
+        if (t.checked) total += finishTask(t);
+        else { t.status = "late"; delete t.checked; taskLog("late", t, 0); }
+      });
+      save();
+      renderAll();
+      if (total) playFx(total, 0); else renderWallet(true);
+      if (left) toast(left + (left > 1 ? " tâches procrastinées." : " tâche procrastinée."));
+    } });
+  }
+  function confirmSecondChance() {
+    var pending = pendingTasks();
+    if (!pending.length || !pending.every(function (t) { return t.choice; })) return;
+    var gain = 0, penalty = 0;
+    pending.forEach(function (t) {
+      if (t.choice === "done") gain += finishTask(t);
+      else {
+        t.status = "late";
+        delete t.choice; delete t.checked;
+        taskLog("late", t, 0);
+        penalty += chargeLate(t);
+      }
+    });
+    save();
+    renderAll();
+    renderWallet(true);
+    var parts = [];
+    if (gain) parts.push(signed(gain) + " ℝ pour les tâches validées");
+    if (penalty) parts.push(MINUS + fmt2(penalty) + " ℝ de retard");
+    toast("Tâches d'hier réglées" + (parts.length ? " : " + parts.join(", ") : "") + ".");
+  }
+  function askFinishLate(t) {
+    openModal("Tu as fait « " + t.label + " » ?", "Elle rapporte sa valeur (" + signed(taskValue(t)) + " ℝ) et les pénalités s'arrêtent. Ce qui a déjà été retiré (" + fmt2(t.paid || 0) + " ℝ) reste retiré.",
+      { label: "Oui, c'est fait", run: function () {
+        var g = finishTask(t);
+        save();
+        renderAll();
+        playFx(g, 0);
+      } });
+  }
+  function askDeleteTask(t) {
+    openModal("You shoure ‘bout dat ?", "Supprimer la tâche « " + t.label + " » ?",
+      { label: "Oui", run: function () {
+        openModal("Really shoure ?", "« " + t.label + " » va disparaître de la liste du jour.",
+          { label: "Supprimer", run: function () {
+            state.tasks = state.tasks.filter(function (x) { return x.id !== t.id; });
+            save();
+            renderAll();
+            toast("Tâche supprimée.");
+          } });
+      } });
+  }
+  function taskForm() {
+    return { label: $("nt-name").value.trim().replace(/\s+/g, " "), difficulty: +$("nt-diff").value, impact: +$("nt-impact").value };
+  }
+  function renderTaskFormula() {
+    var f = taskForm();
+    $("nt-diff-out").textContent = f.difficulty;
+    $("nt-impact-out").textContent = f.impact;
+    $("nt-formula").innerHTML = "Valeur : " + f.difficulty + " + " + f.impact + " × 0,1 = <strong>" + rHtml(signed(taskValue(f))) + "</strong>";
+  }
+  function addTask(e) {
+    e.preventDefault();
+    var f = taskForm(), err = $("nt-error");
+    err.hidden = true;
+    if (!f.label) { err.textContent = "Écris la tâche à faire."; err.hidden = false; $("nt-name").focus(); return; }
+    state.tasks.push({ id: "t" + Date.now().toString(36), label: f.label, difficulty: f.difficulty, impact: f.impact, day: todayKey(), status: "todo" });
+    save();
+    $("new-task").reset();
+    renderAll();
+    toast("Tâche ajoutée : " + f.label + " (" + signed(taskValue(f)) + " ℝ)");
+  }
+  // Rappel du matin, une fois par jour et par appareil ouvert, s'il reste des tâches de la veille.
+  var remindedOn = null;
+  function maybeRemind() {
+    if (!pendingTasks().length || remindedOn === todayKey() || !$("modal").hidden) return;
+    remindedOn = todayKey();
+    openModal("Hé, il semble que tu as oublié de valider les tâches de la veille !",
+      "Tu as une seconde chance : pour chaque tâche, coche VALIDÉE ou PROCRASTINE.",
+      { label: "Voir les tâches", run: function () { location.hash = "#taches"; } }, { label: "Plus tard", run: function () {} });
+  }
+
   // ---------- Calendrier ----------
   var calYear = dateOf(todayKey()).getFullYear();
   var phoneQuery = window.matchMedia("(max-width: 640px)");
@@ -2169,21 +2640,29 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   }
 
   // ---------- Navigation ----------
-  var PAGES = ["actions", "shop", "calendrier", "parametres"];
+  var PAGES = ["actions", "taches", "calendrier", "shop", "parametres"];
+  var PAGE_TITLES = { actions: "Actions", taches: "Tâches", calendrier: "Calendrier", shop: "Shop", parametres: "Paramètres" };
   function route() {
     var page = location.hash.slice(1);
     if (page === "banque") page = "parametres"; // anciens liens
     if (PAGES.indexOf(page) < 0) page = "actions";
-    var nav = document.querySelector(".tabs");
     PAGES.forEach(function (p) {
       $("page-" + p).hidden = p !== page;
       var tab = $("tab-" + p);
       if (p === page) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
-      nav.appendChild(tab);
     });
-    // Le titre de la page active passe en premier, en grand et souligné.
-    nav.insertBefore($("tab-" + page), nav.firstChild);
+    // Le titre de la page active est le bouton du menu, en grand et souligné.
+    $("menu-title").textContent = PAGE_TITLES[page];
+    toggleMenu(false);
     if (page === "calendrier") renderCalendar();
+  }
+  function toggleMenu(open) {
+    $("menu-list").hidden = !open;
+    $("menu-btn").setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      var cur = $("menu-list").querySelector('[aria-current="page"]');
+      (cur || $("menu-list").firstElementChild).focus();
+    }
   }
 
   function renderDate() {
@@ -2196,6 +2675,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     renderWallet(false);
     renderBank();
     renderActionAdmin();
+    renderTasks();
     buildShop();
     if (!$("page-calendrier").hidden) renderCalendar();
   }
@@ -2211,7 +2691,8 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     }
     var r = applyInterest();
     r.moved += sweep();
-    var changed = seen || rounded || r.earned || r.moved;
+    var tk = processTasks();
+    var changed = seen || rounded || r.earned || r.moved || tk.changed;
     if (state.day.date !== todayKey()) {
       state.day = freshDay();
       editDay = null;
@@ -2231,6 +2712,11 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     } else if (!silent && r.earned) {
       toast("Banque Sabatier : +" + fmt2(r.earned) + " ℝ d'intérêts.");
     }
+    if (!silent && tk.charged) {
+      renderWallet(true);
+      toast("Tâches procrastinées : " + MINUS + fmt2(tk.charged) + " ℝ retirés du porte-monnaie.");
+    }
+    maybeRemind();
   }
 
   // ---------- Démarrage ----------
@@ -2257,6 +2743,18 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   phoneQuery.addEventListener("change", function () { if (!$("page-calendrier").hidden) renderCalendar(); });
   $("validate").addEventListener("click", validate);
   $("round").addEventListener("click", roundWallet);
+  $("menu-btn").addEventListener("click", function () { toggleMenu($("menu-list").hidden); });
+  document.addEventListener("click", function (e) {
+    if (!$("menu-list").hidden && !$("menu").contains(e.target)) toggleMenu(false);
+  });
+  $("menu-list").addEventListener("click", function (e) {
+    // Même page : le hash ne change pas, on ferme juste le menu.
+    if (e.target.closest(".menu-item")) setTimeout(function () { toggleMenu(false); }, 0);
+  });
+  $("new-task").addEventListener("submit", addTask);
+  $("new-task").addEventListener("input", renderTaskFormula);
+  $("tasks-validate").addEventListener("click", askValidateTasks);
+  $("sc-confirm").addEventListener("click", confirmSecondChance);
   $("back-today").addEventListener("click", backToToday);
   $("day-edit").addEventListener("click", function () { askReopen(false); });
   $("day-reset").addEventListener("click", function () { askReopen(true); });
@@ -2290,7 +2788,10 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   });
   $("modal").addEventListener("click", function (e) { if (e.target === $("modal")) closeModal(); });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") { closeModal(); closeFx(); }
+    if (e.key === "Escape") {
+      if (!$("menu-list").hidden) { toggleMenu(false); $("menu-btn").focus(); }
+      closeModal(); closeFx();
+    }
     if ((e.key === "Enter" || e.key === " ") && !$("fx").hidden) { e.preventDefault(); closeFx(); }
   });
   setInterval(function () { checkNewDay(false); }, 30000);
