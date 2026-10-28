@@ -928,7 +928,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
       <section aria-labelledby="h-today-tasks">
         <h2 class="col-head" id="h-today-tasks">Tâches du jour</h2>
         <div id="task-list"></div>
-        <p class="tasks-empty" id="tasks-empty">Aucune tâche aujourd'hui. Ajoute ta première tâche ci-dessous.</p>
+        <p class="tasks-empty" id="tasks-empty">Aucune tâche prévue aujourd'hui. Écris ce soir la liste de demain, plus bas.</p>
         <div class="foot tasks-foot" id="tasks-foot" hidden>
           <div class="total">
             <span class="total-label">Total</span>
@@ -938,8 +938,14 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
         </div>
       </section>
 
+      <section aria-labelledby="h-tomorrow-tasks">
+        <h2 class="col-head" id="h-tomorrow-tasks">Liste de demain · <span id="tomorrow-date"></span></h2>
+        <ul class="alist" id="tomorrow-list"></ul>
+        <p class="tasks-empty" id="tomorrow-empty">Rien de prévu pour demain pour l'instant.</p>
+      </section>
+
       <form class="new-action" id="new-task" novalidate>
-        <h3 class="new-title">Nouvelle tâche</h3>
+        <h3 class="new-title">Ajouter une tâche pour demain</h3>
         <div class="field">
           <label for="nt-name">Tâche</label>
           <input class="field-input" id="nt-name" type="text" maxlength="50" autocomplete="off" placeholder="Ex. : Appeler la banque">
@@ -960,7 +966,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
         </div>
         <p class="formula" id="nt-formula"></p>
         <p class="form-error" id="nt-error" hidden></p>
-        <div><button class="btn" type="submit">Ajouter la tâche</button></div>
+        <div><button class="btn" type="submit">Ajouter pour demain</button></div>
       </form>
 
       <section class="ledger" aria-labelledby="h-tasklog">
@@ -1246,6 +1252,22 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     if (!s.lastSeen) s.lastSeen = keyOf(new Date());
     if (!Array.isArray(s.tasks)) s.tasks = [];     // tâches : à faire, faites, procrastinées
     if (!Array.isArray(s.taskLog)) s.taskLog = [];
+    if (!s.tasksV) {
+      // Version précédente : la liste écrite le soir comptait pour le jour même. Elle était faite pour le
+      // lendemain : on décale d'un jour les tâches pas encore faites (et celles passées en procrastinées
+      // sans pénalité encore payée), et on efface ces « procrastinées » du relevé.
+      var moved = {};
+      s.tasks.forEach(function (t) {
+        if (t.status === "todo" || (t.status === "late" && !(t.paid > 0))) {
+          if (t.status === "late") moved[t.label] = true;
+          t.day = addDays(t.day, 1);
+          t.status = "todo";
+          delete t.checked; delete t.choice; delete t.paid;
+        }
+      });
+      s.taskLog = s.taskLog.filter(function (op) { return !(op.type === "late" && moved[op.label]); });
+      s.tasksV = 2;
+    }
     if (!Array.isArray(s.items)) s.items = [];     // items du shop (modifiables)
     if (!s.shopSeeded) {
       // Les items d'origine deviennent des items comme les autres (sans image dessinée).
@@ -1960,6 +1982,11 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     state.taskLog.unshift({ date: todayKey(), type: type, label: t.label, amount: amount });
     if (state.taskLog.length > 200) state.taskLog.length = 200;
   }
+  // La liste s'écrit le soir pour le lendemain : ces tâches ne comptent qu'à partir de demain.
+  function tomorrowTasks() {
+    var tomorrow = addDays(todayKey(), 1);
+    return state.tasks.filter(function (t) { return t.day === tomorrow && t.status === "todo"; });
+  }
   function todaysTasks() {
     var today = todayKey();
     return state.tasks.filter(function (t) { return t.day === today && t.status !== "late"; });
@@ -2109,6 +2136,26 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     var sum = open.reduce(function (a, t) { return a + (t.checked ? taskValue(t) : 0); }, 0);
     $("tasks-total").innerHTML = rHtml(signed(sum));
 
+    // Liste de demain : prévue, sans case à cocher ni pénalité
+    var tl = $("tomorrow-list"), next = tomorrowTasks();
+    $("tomorrow-date").textContent = longDate(addDays(todayKey(), 1));
+    tl.innerHTML = "";
+    next.forEach(function (t) {
+      var li = el("li");
+      var name = el("span", "name");
+      name.textContent = t.label;
+      name.appendChild(el("small", null, "Difficulté " + t.difficulty + " · Impact " + t.impact));
+      li.appendChild(name);
+      li.appendChild(el("span", "v", rHtml(signed(taskValue(t)))));
+      var del = el("button", "del", "Supprimer");
+      del.type = "button";
+      del.setAttribute("aria-label", "Supprimer la tâche " + t.label);
+      del.addEventListener("click", function () { askDeleteTask(t); });
+      li.appendChild(del);
+      tl.appendChild(li);
+    });
+    $("tomorrow-empty").hidden = next.length > 0;
+
     var badge = pending.length + late.length;
     $("tasks-badge").hidden = !badge;
     $("tasks-badge").textContent = badge;
@@ -2184,7 +2231,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   function askDeleteTask(t) {
     openModal("You shoure ‘bout dat ?", "Supprimer la tâche « " + t.label + " » ?",
       { label: "Oui", run: function () {
-        openModal("Really shoure ?", "« " + t.label + " » va disparaître de la liste du jour.",
+        openModal("Really shoure ?", "« " + t.label + " » va disparaître de la liste.",
           { label: "Supprimer", run: function () {
             state.tasks = state.tasks.filter(function (x) { return x.id !== t.id; });
             save();
@@ -2207,11 +2254,11 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     var f = taskForm(), err = $("nt-error");
     err.hidden = true;
     if (!f.label) { err.textContent = "Écris la tâche à faire."; err.hidden = false; $("nt-name").focus(); return; }
-    state.tasks.push({ id: "t" + Date.now().toString(36), label: f.label, difficulty: f.difficulty, impact: f.impact, day: todayKey(), status: "todo" });
+    state.tasks.push({ id: "t" + Date.now().toString(36), label: f.label, difficulty: f.difficulty, impact: f.impact, day: addDays(todayKey(), 1), status: "todo" });
     save();
     $("new-task").reset();
     renderAll();
-    toast("Tâche ajoutée : " + f.label + " (" + signed(taskValue(f)) + " ℝ)");
+    toast("Ajoutée pour demain : " + f.label + " (" + signed(taskValue(f)) + " ℝ)");
   }
   // Rappel du matin, une fois par jour et par appareil ouvert, s'il reste des tâches de la veille.
   var remindedOn = null;

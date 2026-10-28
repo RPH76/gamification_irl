@@ -5,7 +5,8 @@ Ouvrir `index.html` dans un navigateur, ou le servir avec n'importe quel héberg
 
 - **Actions** : cocher les actions du jour, le total s'affiche en bas à droite, puis « Valider ».
 - **Menu** : le titre de la page ouvre un menu déroulant (Actions, Tâches, Calendrier, Shop, Paramètres).
-- **Tâches** : liste du jour (valeur = difficulté + impact × 0,1). Le soir, « Valider les tâches » paie
+- **Tâches** : la liste s'écrit le soir pour le lendemain (valeur = difficulté + impact × 0,1).
+  Le lendemain soir, « Valider les tâches » paie
   les tâches cochées ; les autres passent en procrastinées. Le lendemain, un rappel offre une seconde
   chance (VALIDÉE / PROCRASTINE). Une tâche procrastinée (rouge, « J+n ») coûte 10 % de sa valeur
   le 1er jour de retard puis 15 % de plus par jour, jusqu'à 100 %. Une tâche faite disparaît le lendemain.
