@@ -5,6 +5,10 @@ Ouvrir `index.html` dans un navigateur, ou le servir avec n'importe quel héberg
 
 - **Actions** : cocher les actions du jour, le total s'affiche en bas à droite, puis « Valider ».
 - **Menu** : le titre de la page ouvre un menu déroulant (Actions, Tâches, Calendrier, Shop, Paramètres).
+- **Mode repos** (menu ou Paramètres) : tâches et actions suspendues (ni pénalité, ni rappel, séries et
+  heure du dodo en pause) ; la Banque Sabatier continue. L'écran ne montre qu'un épisode de la Panthère
+  Rose tiré au hasard (292 épisodes de la chaîne officielle) et « De retour ? » (confirmation
+  « Es-tu rétabli ? », puis message de bon retour). Les Paramètres restent accessibles.
 - **Tâches** : la liste s'écrit le soir pour le lendemain (valeur = difficulté + impact × 0,1).
   Le lendemain soir, « Valider les tâches » paie
   les tâches cochées ; les autres passent en procrastinées. Le lendemain, un rappel offre une seconde

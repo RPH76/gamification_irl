@@ -120,6 +120,26 @@ button { font: inherit; color: inherit; }
 .menu-item:hover { background: var(--sand-deep); }
 .menu-item:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .menu-item[aria-current="page"] { background: var(--ink); color: var(--sand); }
+button.menu-item { width: 100%; cursor: pointer; text-align: left; }
+.menu-rest { border-style: dashed; background: transparent; }
+
+/* ---------- Mode repos ---------- */
+.rest { display: grid; justify-items: center; gap: 26px; margin-top: 30px; }
+.rest-video {
+  width: min(100%, 960px);
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #000000;
+}
+.rest-video iframe, .rest-video #rest-player { width: 100%; height: 100%; border: 0; display: block; }
+.rest-back { font-size: 1.35rem; padding: 0.8em 1.9em; }
+.rest-view .wallet-pill, .rest-view .date { display: none; }
+.rest-admin { display: grid; gap: 14px; }
+.rest-status { margin: 0; font-size: 1.08rem; max-width: 60ch; }
+.dot.rest { border-style: dashed; opacity: 0.7; }
+.fx.welcome .fx-amount { color: var(--gain); font-size: clamp(3rem, 13vw, 6.5rem); text-wrap: balance; }
 .menu-badge {
   min-width: 1.6em;
   padding: 0.15em 0.45em;
@@ -825,7 +845,9 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
         <a class="menu-item" id="tab-taches" href="#taches">Tâches<span class="menu-badge" id="tasks-badge" hidden></span></a>
         <a class="menu-item" id="tab-calendrier" href="#calendrier">Calendrier</a>
         <a class="menu-item" id="tab-shop" href="#shop">Shop</a>
+        <a class="menu-item" id="tab-repos" href="#repos" hidden>Repos</a>
         <a class="menu-item" id="tab-parametres" href="#parametres">Paramètres</a>
+        <button class="menu-item menu-rest" type="button" id="menu-rest">Mode repos</button>
       </div>
     </nav>
     <div class="pill wallet-pill" id="wallet" title="Porte-monnaie €RAPH" aria-live="polite">
@@ -987,6 +1009,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
       <div class="legend">
         <span><i class="dot full"></i>Validé</span>
         <span><i class="dot"></i>Pas validé</span>
+        <span><i class="dot rest"></i>Repos</span>
         <span><i class="dash"></i>Jour inexistant</span>
       </div>
     </div>
@@ -995,9 +1018,23 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     <div class="cal-wrap"><div class="cal" id="cal"></div></div>
   </main>
 
+  <!-- Page Repos : la vidéo, « De retour ? », et rien d'autre -->
+  <main id="page-repos" hidden>
+    <div class="rest">
+      <div class="rest-video" id="rest-video"><div id="rest-player"></div></div>
+      <button class="btn rest-back" type="button" id="rest-back">De retour ?</button>
+    </div>
+  </main>
+
   <!-- Page Paramètres -->
   <main id="page-parametres" hidden>
     <div class="settings">
+    <section class="rest-admin" aria-labelledby="h-rest">
+      <h2 class="bank-name" id="h-rest">Mode repos</h2>
+      <p class="rest-status" id="rest-status"></p>
+      <div><button class="btn" type="button" id="rest-toggle">Activer le mode repos</button></div>
+    </section>
+
     <section class="bank" aria-labelledby="h-bank">
       <div>
         <h2 class="bank-name" id="h-bank">Banque Sabatier</h2>
@@ -1251,6 +1288,8 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     if (!Array.isArray(s.hidden)) s.hidden = [];   // actions d'origine supprimées de la liste
     if (!s.lastSeen) s.lastSeen = keyOf(new Date());
     if (!Array.isArray(s.tasks)) s.tasks = [];     // tâches : à faire, faites, procrastinées
+    if (!Array.isArray(s.restPeriods)) s.restPeriods = []; // repos terminés : jours [from, to[
+    if (s.rest === undefined) s.rest = null;       // repos en cours : { since }
     if (!Array.isArray(s.taskLog)) s.taskLog = [];
     if (!s.tasksV) {
       // Version précédente : la liste écrite le soir comptait pour le jour même. Elle était faite pour le
@@ -1495,9 +1534,28 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
   // ---------- Séries de jours consécutifs ----------
   // Nombre de jours validés d'affilée, juste avant `key`, où l'action était cochée.
+  // Jours de repos : le repos en cours (depuis `since`) et les repos terminés [from, to[.
+  function isRestDay(k) {
+    if (state.rest && k >= state.rest.since) return true;
+    return state.restPeriods.some(function (r) { return k >= r.from && k < r.to; });
+  }
+  // Nombre de jours de repos dans [a, b[.
+  function restDaysBetween(a, b) {
+    var periods = state.restPeriods.slice();
+    if (state.rest) periods.push({ from: state.rest.since, to: b });
+    return periods.reduce(function (n, r) {
+      var from = r.from > a ? r.from : a, to = r.to < b ? r.to : b;
+      return n + Math.max(0, daysBetween(from, to));
+    }, 0);
+  }
   function streakBefore(id, key) {
     var n = 0, k = addDays(key, -1);
-    while (state.days[k] && state.days[k].checks && state.days[k].checks[id]) { n++; k = addDays(k, -1); }
+    // Un jour de repos ne casse pas la série et ne compte pas.
+    for (var guard = 0; guard < 4000; guard++) {
+      if (state.days[k] && state.days[k].checks && state.days[k].checks[id]) n++;
+      else if (!isRestDay(k)) break;
+      k = addDays(k, -1);
+    }
     return n;
   }
   // Minecraft : 2 ℝ par session le 1er jour de la série, puis une baisse régulière chaque jour d'utilisation
@@ -1522,7 +1580,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   }
   // Heure du dodo : minuit le premier jour, puis une minute de moins chaque jour, jusqu'à 22h30.
   function dodoTime() {
-    var k = Math.max(0, daysBetween(state.dodoStart, cur().date));
+    var k = Math.max(0, daysBetween(state.dodoStart, cur().date) - restDaysBetween(state.dodoStart, cur().date));
     var m = Math.max(DODO_LAST, DODO_FIRST - k);
     if (m === DODO_FIRST) return "minuit";
     return Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0");
@@ -2014,6 +2072,7 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     var before = state.tasks.length;
     state.tasks = state.tasks.filter(function (t) { return !(t.status === "done" && t.doneDate < today); });
     if (state.tasks.length !== before) changed = true;
+    if (state.rest) return { changed: changed, charged: 0 }; // repos : ni procrastination, ni pénalité
     state.tasks.forEach(function (t) {
       if (t.status === "todo" && t.day < yesterday) {
         t.status = "late";
@@ -2263,11 +2322,161 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   // Rappel du matin, une fois par jour et par appareil ouvert, s'il reste des tâches de la veille.
   var remindedOn = null;
   function maybeRemind() {
-    if (!pendingTasks().length || remindedOn === todayKey() || !$("modal").hidden) return;
+    if (state.rest || !pendingTasks().length || remindedOn === todayKey() || !$("modal").hidden) return;
     remindedOn = todayKey();
     openModal("Hé, il semble que tu as oublié de valider les tâches de la veille !",
       "Tu as une seconde chance : pour chaque tâche, coche VALIDÉE ou PROCRASTINE.",
       { label: "Voir les tâches", run: function () { location.hash = "#taches"; } }, { label: "Plus tard", run: function () {} });
+  }
+
+  // ---------- Mode repos ----------
+  // Tâches et actions suspendues (ni pénalité, ni rappel, séries et dodo en pause) ;
+  // la Banque Sabatier continue : intérêts, arrondis et versements.
+  var PINK_PANTHER = [
+    "EPntiVHuKrU", "-8QbJPyFH80", "EKmbhjIbTLc", "ToXN4L0dSKg", "dkqvDJ-kuB4", "IBeCexd5Scc", "HOs1KVuQqg0", "RdD9fkgGXNQ", "pD_GrHaVBlc", "w0bxuhEYk-g", "7PLDnsSLpOU", "O1uSxappQfc",
+    "vMlfXcBiXZk", "GWWusIok2Us", "emMvf2CCgeQ", "Rz9G8k4Z4dQ", "v0rMFWaAHfU", "TPYvv0kOfdg", "9Y-ORAhQNpo", "9YsRc0-opdo", "MUlLn-7t9kg", "IHfWfAucytQ", "wfEBha0SV0A", "kC3F7TLWaiU",
+    "lSQQb7tYTiM", "EH7xoFc5EeY", "MdzLTsU4ZkU", "cGX8_kff8zc", "j7M2IDbyvGA", "xoGUXPWMw6M", "erp4XHnxXLc", "0uXDPOJE1ts", "ivLgIXqJISY", "XjTLYUknIoE", "IC_24m2aPac", "Sb6u0cWn7Vs",
+    "tG0EKSJlMhY", "jBzdo_MfFjo", "JqMxuIKqjbs", "VHFjKS-7Ta4", "uTcX1yGCCv8", "QFCOvqK_px8", "93Ux4dVgQG0", "C703ngZG9Sw", "XfZQKA03-Fc", "G3jv5anxMFY", "k8iBrebdEKQ", "1g_suDAC5Dw",
+    "hXBpYbLvedo", "T4zkErkgbVk", "KBfFVRjjli8", "1Xnu7sKI4wk", "oBU8tzA6ndI", "-WCqCuomP5M", "dzcI5vLuFaA", "M6FIwnKhQ7I", "EfBzmdTE6d8", "kxbF9ioqCrA", "jRMHLkJ1xeg", "eFmppP_MdSY",
+    "m9yxvFi_u7U", "Z32PUoOn_sQ", "W_7Ejk2ZCUk", "mmOLbRn_XY0", "H-CAyDB9rrY", "W0RxHlBQNDk", "PRVjra-yY98", "suAzAIeDquQ", "9IzEdK_-8kQ", "03Ezl9gFKQE", "xNaDofEoGg8", "41uG_js3dtQ",
+    "JNHzMvvVscM", "m5CfoicmZsQ", "ERjuPR4fbJ8", "_zUcVjNxR8w", "iYF7-NG0Krw", "W9tz3hbMtj0", "uDLQFMcDLxA", "pMw2nxsxAzs", "FJFSUhaaJmM", "oFqsKcPuhtA", "u4gWmPNZ7-Y", "3xxrThc9V-I",
+    "sIHigavUGVk", "svlLdSBOz8w", "l0ZY0AnkZMU", "vOtsAiT0xt4", "62Z-N736Mtk", "YeW0fMpSyh4", "SqJEgGgsrjc", "Uyd35AVfJLg", "FZwZP2mttmI", "J6x5jC4EEIo", "5eRluovocMs", "_OLuGBF3I0o",
+    "bGP9YXfEZEE", "TAf0CBN9Ue4", "nO1D0gxRy_g", "41LHbVORpAY", "5lKufzCX7TA", "wEghuTeK4Yg", "Nasnx36_wqs", "zxnFlopxP2c", "sx39yREbkE4", "pQ_d9NO2zY8", "8L9h5vlO4Fg", "0V6IZqAQnWg",
+    "3rG0rvhcaqY", "ywey17DHuMU", "NPhqNr9C3kA", "I0mXZKVXdQI", "YVCsvEkQs20", "0tlikHCOE54", "RHd8Gy-mk_g", "Wg5ChyHn8o4", "y2N9_M0x1Xs", "_MMJGYHMon8", "Z7tDeq2pdGU", "zg8uLixz27c",
+    "HX-cF24IO1M", "nqBjR8P0cNk", "hInzAyjetiA", "uYnxpFa5Opo", "_rd6Ad6F-80", "VTNvhkYdrak", "LMtZxfmEifU", "bFoBJceSvf8", "wOnPp7EPTNA", "Ww6o_8SwTZI", "EDedVrnYLzE", "5yGDP151_bM",
+    "syS5khoWgok", "Jp6hKyxjTmQ", "Tq2x6CDRycY", "1ymkzIny0OM", "GJW5p0A_-Hg", "DFSH-gKM9fA", "rOqH4GC3mYU", "nDPAZ6CuXf0", "3q3n28cdWe0", "L7nVCkcOctc", "C4X3IatLfY0", "ykUqsi6rHV8",
+    "UpAdM3R0xpY", "ge6S3RtPMak", "KD4O68-lv00", "EvYOjGRNN8w", "nlCZcFyQ0ZM", "ITTx8NyIsjM", "agRGY2aG0rQ", "5WsFoWOFQq8", "YqUi7QEQJGE", "lsui6RpdlxE", "7JOw7-nJj5c", "bdIg-UdKvWc",
+    "VnHm2mKeisQ", "6rOZ5BbVp0E", "VJAptahRNkQ", "Y7WPp3FJNBI", "2NlH6mIj2KM", "wpOW-sJTwss", "k4Vf6p6zP-w", "pNCQRti9gvk", "xz2US8-WHOY", "1chAxF5zc0o", "Tw9gvs6uPMM", "2zXghasAvDI",
+    "jSf4K505hjs", "vzlXVv2bcag", "NSufg8thNX8", "jXBdjUX3ocY", "zVnEM9Knte0", "LBOx1DgxkUE", "3ZhBdnB8QAo", "FCuRs91niXU", "m-6ir-gFpbA", "BUOPdqTl69M", "mq8kTMrcjtc", "o53xMlpIhbg",
+    "iYl8mN4n6U0", "JxsxzZeSQUc", "QsAtPfjl9tI", "En22uR0GaxY", "h7AP55CA1KA", "s_rfja8KTLw", "IkEk7gw71bM", "vi28PPLecYA", "whtZk7OokfY", "oUWj3Bx1mZE", "OIiMtPzIpiQ", "gpC_AwjtbFQ",
+    "W-qZA4FhHLs", "P3yDtghHHI8", "cyPdQuSGcbs", "RGu2bLldPpE", "X1_U1FfEFy0", "Baww6Llxywc", "RAcNZo7-f0g", "Z00NsogbIqw", "MhHJbGV5aWQ", "umM9Ls0SaiU", "FnTWLxS-lGQ", "N9irl60bduk",
+    "2eX2TCfiFuY", "MxEXJ6G-0j4", "mj6toTRtw2Y", "bZsqdTrr1eM", "UJ5e1MCrN_8", "m9zliOL1za0", "JhapP0DuETo", "wI5fS0O6TrE", "RzriJpYiGjw", "UoU1fJAQll4", "HQBia-CfqbE", "c2XIdNzoW3o",
+    "-DJ6CEA0i9I", "KMXKqoMleK0", "iubDWBhPwvg", "41aGCrXM20E", "XENAqUBGJao", "J7XzdklM6mk", "T0QktZ0yuqY", "mhP0tPObClY", "3UxAHX-I6t8", "VsO2rvnucQw", "16YG9qZQIJE", "WJdB9hk_jzQ",
+    "9y3lt2oWh_0", "r5VSo5hgQRQ", "nN5QPfxh6V0", "gRQcZmvzMic", "bDNFPAw14aw", "DHkS8Y5pQcs", "hFAZH0-f4q4", "69DLzE1JtoU", "fyLsEcRhyVo", "FWbLhPYKhiw", "_dgnKtu701s", "sIVXBsWqi74",
+    "yIasDc7XTxY", "itsuZT2Jydw", "o4lq40wcTmQ", "CJy8QkOoRpc", "T0t_Ivp99sY", "xiA6qe5S2wU", "1q2hu-mDtKs", "9FCKKBVmfEI", "-AV9ahe5siA", "7y4WhR3W2Nc", "lHSl-yz5FqA", "xXvBkwihOE8",
+    "M9P-eDS3oMc", "ObV6-zeFlE4", "OsdPDbh0RYE", "Y3FEZJz55T0", "mPzCkajdLvE", "VLhfnfiS-7A", "IISTO4-GXSI", "G6ZLZQGydPc", "kOnlduSDrfs", "nB2Hsh1XqyA", "xF6RcZBsFwA", "vLpEK9hV0-I",
+    "NQJ8sD9BGS8", "Io5oqdC_1co", "GsLUzNDucnE", "ncSjOWbx79I", "Rr2Y135W6Fc", "h16fWlzTBGU", "Yp6_9VuqLyQ", "mQxZJsLGSF8", "xRPAGHdt3kc", "qfAAVGaizcI", "CYzk3EA1MW4", "zC2crNdmZX0",
+    "w-RfCLW7ASk", "n8R5PBQEuoo", "D0wdFmC8jWw", "Hp-Qe-FD4X0", "GXfWeDogVUg", "Qkvuxi1Ns_U", "ijuPb7QCssc", "E4NoWCKlE3A", "skgmo0OJ324", "rcfBAVolJkk", "wIclycvTTfY", "qhsQRYP8SYk",
+    "exkjh3eIpe0", "5r9vdqAFCY4", "Vavn1j9ywqU", "nfOPLfIFwe0"
+  ];
+  var player = null, playerTries = 0, lastEpisode = null;
+  // Tirage vraiment aléatoire (crypto, sans biais) ; jamais deux fois de suite le même épisode.
+  function randomEpisode() {
+    var n = PINK_PANTHER.length, max = Math.floor(4294967296 / n) * n, buf = new Uint32Array(1), id;
+    try { lastEpisode = lastEpisode || localStorage.getItem("eraph-last-episode"); } catch (e) {}
+    do {
+      do { crypto.getRandomValues(buf); } while (buf[0] >= max);
+      id = PINK_PANTHER[buf[0] % n];
+    } while (id === lastEpisode && n > 1);
+    lastEpisode = id;
+    try { localStorage.setItem("eraph-last-episode", id); } catch (e) {}
+    return id;
+  }
+  function embedUrl(id) { return "https://www.youtube-nocookie.com/embed/" + id + "?rel=0&playsinline=1&modestbranding=1"; }
+  // Lecteur YouTube : si un épisode ne passe pas (retiré, bloqué), on en tire un autre ; à la fin, on enchaîne.
+  function showEpisode() {
+    if (player) return;
+    var box = $("rest-video");
+    var plain = function () {
+      if (player || !state.rest) return;
+      player = "iframe";
+      box.innerHTML = "";
+      var f = el("iframe");
+      f.src = embedUrl(randomEpisode());
+      f.title = "La Panthère Rose";
+      f.allow = "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen";
+      f.allowFullscreen = true;
+      box.appendChild(f);
+    };
+    var build = function () {
+      if (player || !state.rest) return;
+      box.innerHTML = '<div id="rest-player"></div>';
+      player = new YT.Player("rest-player", {
+        host: "https://www.youtube-nocookie.com",
+        videoId: randomEpisode(),
+        playerVars: { rel: 0, playsinline: 1, modestbranding: 1 },
+        events: {
+          onError: function () { if (playerTries++ < 8) player.loadVideoById(randomEpisode()); },
+          onStateChange: function (e) {
+            if (e.data === 1) playerTries = 0;
+            if (e.data === 0) player.loadVideoById(randomEpisode());
+          }
+        }
+      });
+    };
+    if (window.YT && YT.Player) return build();
+    window.onYouTubeIframeAPIReady = build;
+    if (!document.getElementById("yt-api")) {
+      var sc = document.createElement("script");
+      sc.id = "yt-api";
+      sc.src = "https://www.youtube.com/iframe_api";
+      sc.onerror = plain;
+      document.head.appendChild(sc);
+    }
+    setTimeout(plain, 6000); // API injoignable : simple vidéo intégrée
+  }
+  function pauseEpisode() {
+    if (player && player.pauseVideo) try { player.pauseVideo(); } catch (e) {}
+  }
+  function stopEpisode() {
+    if (player && player.destroy) try { player.destroy(); } catch (e) {}
+    player = null;
+    playerTries = 0;
+    $("rest-video").innerHTML = '<div id="rest-player"></div>';
+  }
+  function renderRestAdmin() {
+    var r = state.rest;
+    $("rest-toggle").textContent = r ? "De retour ?" : "Activer le mode repos";
+    if (r) {
+      var n = daysBetween(r.since, todayKey());
+      $("rest-status").textContent = "En repos depuis " + (n ? "le " + longDate(r.since) + " (" + n + (n > 1 ? " jours)." : " jour).") : "aujourd'hui.") +
+        " Tâches et actions sont suspendues ; la Banque Sabatier continue de faire travailler tes sous.";
+    } else {
+      $("rest-status").textContent = "Malade ou besoin de souffler ? Le mode repos suspend tes tâches et tes actions : " +
+        "pas de pénalité, pas de rappel, séries et heure du dodo en pause. La Banque Sabatier, elle, continue de travailler.";
+    }
+  }
+  function askRest() {
+    if (state.rest) return askBack();
+    openModal("Passer en mode repos ?",
+      "Tes tâches et tes actions sont suspendues jusqu'à ton retour : pas de pénalité, pas de rappel, séries en pause. " +
+      "La Banque Sabatier continue de faire travailler tes sous.",
+      { label: "Oui, je me repose", run: startRest });
+  }
+  function startRest() {
+    state.rest = { since: todayKey() };
+    editDay = null;
+    save();
+    location.hash = "#repos";
+    renderAll();
+    route();
+  }
+  function askBack() {
+    openModal("Es-tu rétabli ?", "Tes tâches et tes actions reprennent aujourd'hui.",
+      { label: "Oui, je suis rétabli", run: endRest }, { label: "Pas encore", run: function () {} });
+  }
+  // Retour : les jours de repos sortent du compte des retards, les tâches prévues pendant le repos
+  // deviennent celles d'aujourd'hui, et un message de bon retour s'affiche.
+  function endRest() {
+    if (!state.rest) return;
+    var since = state.rest.since, today = todayKey(), n = daysBetween(since, today);
+    if (n > 0) state.restPeriods.push({ from: since, to: today });
+    state.tasks.forEach(function (t) {
+      if (t.status === "late") t.day = addDays(t.day, n);
+      else if (t.status === "todo" && t.day < today) { t.day = today; delete t.choice; }
+    });
+    // Intérêts versés après le début du repos (ceux du matin même étaient déjà là avant).
+    var interest = state.bank.log.filter(function (op) { return op.label === "Intérêts 1 %" && op.date > since; })
+      .reduce(function (a, op) { return a + op.amount; }, 0);
+    state.rest = null;
+    save();
+    stopEpisode();
+    location.hash = "#actions";
+    renderAll();
+    route();
+    var sub = (n ? n + (n > 1 ? " jours de repos. " : " jour de repos. ") : "") + "Tes tâches et tes actions reprennent aujourd'hui.";
+    if (interest) sub += " Pendant ce temps, la Banque Sabatier a fait travailler tes sous : +" + fmt2(interest) + " ℝ d'intérêts.";
+    playWelcome(sub);
   }
 
   // ---------- Calendrier ----------
@@ -2304,8 +2513,9 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
           var key = calYear + "-" + String(m + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
           var rec = state.days[key];
           var past = key <= today;
-          node = el(past ? "button" : "span", "dot" + (rec ? " full" : "") + (past ? " pick" : " future") + (key === today ? " today" : ""));
-          var label = day + " " + MONTHS[m].replace(".", "") + " : " + (rec ? "validé (" + signed(rec.total) + " ℝ)" : "non validé");
+          node = el(past ? "button" : "span", "dot" + (rec ? " full" : "") + (past ? " pick" : " future") + (key === today ? " today" : "") +
+            (!rec && past && isRestDay(key) ? " rest" : ""));
+          var label = day + " " + MONTHS[m].replace(".", "") + " : " + (rec ? "validé (" + signed(rec.total) + " ℝ)" : past && isRestDay(key) ? "repos" : "non validé");
           node.dataset.date = key;
           if (past) {
             node.type = "button";
@@ -2329,6 +2539,20 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   // ---------- Animation ----------
   var fxTimers = [];
   function later(fn, ms) { fxTimers.push(setTimeout(fn, ms)); }
+  // Message de bon retour (même voile que l'animation de validation, sans portefeuille).
+  function playWelcome(sub) {
+    var fx = $("fx");
+    fxTimers.forEach(clearTimeout);
+    fxTimers = [];
+    fx.className = "fx welcome";
+    $("art-wallet").toggleAttribute("hidden", true);
+    $("art-pig").toggleAttribute("hidden", true);
+    $("fx-amount").textContent = "Bon retour !";
+    $("fx-sub").textContent = sub;
+    fx.hidden = false;
+    void fx.offsetWidth;
+    fx.classList.add("show");
+  }
   function playFx(total, fromBank) {
     var fx = $("fx");
     fxTimers.forEach(clearTimeout);
@@ -2687,28 +2911,37 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   }
 
   // ---------- Navigation ----------
-  var PAGES = ["actions", "taches", "calendrier", "shop", "parametres"];
-  var PAGE_TITLES = { actions: "Actions", taches: "Tâches", calendrier: "Calendrier", shop: "Shop", parametres: "Paramètres" };
-  function route() {
+  var PAGES = ["actions", "taches", "calendrier", "shop", "repos", "parametres"];
+  var PAGE_TITLES = { actions: "Actions", taches: "Tâches", calendrier: "Calendrier", shop: "Shop", repos: "Repos", parametres: "Paramètres" };
+  // En repos : seulement la vidéo et les Paramètres.
+  function allowedPages() { return state.rest ? ["repos", "parametres"] : ["actions", "taches", "calendrier", "shop", "parametres"]; }
+  function currentPage() {
     var page = location.hash.slice(1);
     if (page === "banque") page = "parametres"; // anciens liens
-    if (PAGES.indexOf(page) < 0) page = "actions";
+    return allowedPages().indexOf(page) < 0 ? allowedPages()[0] : page;
+  }
+  function route() {
+    var page = currentPage(), allowed = allowedPages();
     PAGES.forEach(function (p) {
       $("page-" + p).hidden = p !== page;
       var tab = $("tab-" + p);
+      tab.hidden = allowed.indexOf(p) < 0;
       if (p === page) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
     });
+    $("menu-rest").hidden = !!state.rest;
+    document.body.classList.toggle("rest-view", page === "repos");
     // Le titre de la page active est le bouton du menu, en grand et souligné.
     $("menu-title").textContent = PAGE_TITLES[page];
     toggleMenu(false);
     if (page === "calendrier") renderCalendar();
+    if (page === "repos") showEpisode(); else pauseEpisode();
   }
   function toggleMenu(open) {
     $("menu-list").hidden = !open;
     $("menu-btn").setAttribute("aria-expanded", open ? "true" : "false");
     if (open) {
       var cur = $("menu-list").querySelector('[aria-current="page"]');
-      (cur || $("menu-list").firstElementChild).focus();
+      (cur || $("menu-list").querySelector(".menu-item:not([hidden])")).focus();
     }
   }
 
@@ -2723,7 +2956,10 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
     renderBank();
     renderActionAdmin();
     renderTasks();
+    renderRestAdmin();
     buildShop();
+    // Repos commencé ou fini sur un autre appareil : la page affichée doit suivre.
+    if ($("page-" + currentPage()).hidden) route();
     if (!$("page-calendrier").hidden) renderCalendar();
   }
 
@@ -2802,6 +3038,9 @@ button.dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   $("new-task").addEventListener("input", renderTaskFormula);
   $("tasks-validate").addEventListener("click", askValidateTasks);
   $("sc-confirm").addEventListener("click", confirmSecondChance);
+  $("menu-rest").addEventListener("click", function () { toggleMenu(false); askRest(); });
+  $("rest-toggle").addEventListener("click", askRest);
+  $("rest-back").addEventListener("click", askBack);
   $("back-today").addEventListener("click", backToToday);
   $("day-edit").addEventListener("click", function () { askReopen(false); });
   $("day-reset").addEventListener("click", function () { askReopen(true); });
